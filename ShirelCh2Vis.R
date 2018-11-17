@@ -6,12 +6,15 @@ library(ggplot2)
 library(dplyr)
 library(data.table)
 library(readxl)
+library(forcats)
 
 # read in data
 f_data <- read_excel("FiltrationMetadataMASTER.xls")
+v_data <- read_excel("mwmrmeasures.xlsx")
 
 #removing unwanted columns
 f_data <- within(f_data, rm(Note, Hours, seconds))
+v_data <- v_data[,c(1:3)] #keeps only columns 1-3
 
 # add a species column using the first two letters of Individual ID
 f_data$Species <- substr(f_data$`Individual ID`,1,2)
@@ -20,3 +23,57 @@ f_data$Species <- substr(f_data$`Individual ID`,1,2)
 f_data$TotalLunges <- f_data$DayLunges + f_data$NightLunges + f_data$TwilightLunges
 f_data$TotalHours <- f_data$DayHours + f_data$NightHours + f_data$TwilightHours
 f_data$LungesPerHour <- f_data$TotalLunges/f_data$TotalHours
+f_data$LungesPerDayHour <- f_data$DayLunges/f_data$DayHours
+f_data$LungesPerNightHour <- f_data$NightLunges/f_data$NightHours
+f_data$LungesPerTwHour <- f_data$TwilightLunges/f_data$TwilightHours
+
+v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
+
+# create table looking at averages of MW 
+v_data_species <- v_data %>% group_by(Species) %>% 
+                  summarize(Mean_L = mean(L), Med_L = median(L), 
+                            Mean_TL = mean(TLm), Med_TL = median(TLm))
+
+# adding column with average engulfment volume by species, averages from v_data_species
+f_data$EngulfmentVolume <- ifelse(f_data$Species == "be", 15498.377,
+                                  ifelse(f_data$Species == "bw", 55349.402, 
+                                         ifelse(f_data$Species == "bp", 56682.353,
+                                                ifelse(f_data$Species == "mn",25091.473, 2755.317))))
+
+f_data$EngulfVolPerHr <- f_data$LungesPerHour*f_data$EngulfmentVolume
+
+# change level ordering
+f_data$Species <- as.factor(f_data$Species)
+f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
+
+
+#####################################
+## Plots
+#####################################
+
+# preliminary plots for feeding rates
+p1 <- ggplot(f_data, aes(x = Species, y = LungesPerHour, shape = Species)) + 
+            geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
+            theme_bw()
+p1
+
+
+p2 <- ggplot(f_data, aes(x = Species, y = LungesPerDayHour, color = Species, shape = Species)) + 
+  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3)
+p2
+
+
+p3 <- ggplot(f_data, aes(x = Species, y = LungesPerNightHour, color = Species, shape = Species)) + 
+  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T)# + geom_violin(inherit.aes = T, alpha = 0.3)
+p3
+
+
+# preliminary plots for filtration capacity
+# preliminary plots for feeding rates
+f_data$Species <- fct_relevel(f_data$Species, "be","bb","mn","bw","bp")
+v1 <- ggplot(f_data, aes(x = Species, y = EngulfVolPerHr, shape = Species)) + 
+  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
+  theme_bw()
+v1
+
+
