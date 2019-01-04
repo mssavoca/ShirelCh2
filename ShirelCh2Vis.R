@@ -9,23 +9,26 @@ library(readxl)
 library(forcats)
 
 # read in data
-f_data <- read_excel("FiltrationMetadataMASTER.xls")
+f_data <- read_excel("ALLPRHS 12.17.2018.xls")
 v_data <- read_excel("mwmrmeasures.xlsx")
 
 #removing unwanted columns
-f_data <- within(f_data, rm(Note, Hours, seconds))
+f_data <- within(f_data, rm(notes))
 v_data <- v_data[,c(1:3)] #keeps only columns 1-3
 
 # add a species column using the first two letters of Individual ID
-f_data$Species <- substr(f_data$`Individual ID`,1,2)
+f_data$Species <- substr(f_data$ID,1,2)
 
 # adding columns
-f_data$TotalLunges <- f_data$DayLunges + f_data$NightLunges + f_data$TwilightLunges
-f_data$TotalHours <- f_data$DayHours + f_data$NightHours + f_data$TwilightHours
+f_data$TotalLunges <- f_data$dayhourslunges + 
+                      f_data$nighthourslunges + 
+                      f_data$twilightzonelunges
+f_data$TotalHours <- f_data$dayhours + f_data$nighthours + f_data$twilightzone
 f_data$LungesPerHour <- f_data$TotalLunges/f_data$TotalHours
-f_data$LungesPerDayHour <- f_data$DayLunges/f_data$DayHours
-f_data$LungesPerNightHour <- f_data$NightLunges/f_data$NightHours
-f_data$LungesPerTwHour <- f_data$TwilightLunges/f_data$TwilightHours
+f_data$LungesPerDayHour <- f_data$dayhourslunges/f_data$dayhours
+f_data$LungesPerNightHour <- f_data$nighthourslunges/f_data$nighthours
+f_data$LungesPerTwHour <- f_data$twilightzonelunges/f_data$twilightzone
+f_data$Length <- as.numeric(f_data$Length)
 
 v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
 
@@ -51,8 +54,8 @@ f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
 ## Plots
 #####################################
 
-# preliminary plots for feeding rates
-p1 <- ggplot(f_data, aes(x = Species, y = LungesPerHour, shape = Species)) + 
+# preliminary plots for feeding rates for deployments of >2 total hours
+p1 <- ggplot(filter(f_data, TotalHours > 2), aes(x = Species, y = LungesPerHour, shape = Species)) + 
             geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
             theme_bw()
 p1
@@ -68,8 +71,22 @@ p3 <- ggplot(f_data, aes(x = Species, y = LungesPerNightHour, color = Species, s
 p3
 
 
+# feeding rates by total length
+MeasuredWhales <- filter(f_data, Length > 5 & TotalHours > 2)
+p4 <- ggplot(MeasuredWhales, aes(Length, LungesPerDayHour)) +
+            geom_point(inherit.aes = T, shape = MeasuredWhales$Species) +  
+            geom_smooth(method = lm) +
+            theme_bw()
+p4
+
+# these premliminary results are counterinuitive, but relationship is significant
+m1 <- lm(MeasuredWhales$LungesPerHour~MeasuredWhales$Length)
+summary(m1)
+
+m2 <- lm(MeasuredWhales$LungesPerDayHour~MeasuredWhales$Length)
+summary(m2)
+
 # preliminary plots for filtration capacity
-# preliminary plots for feeding rates
 f_data$Species <- fct_relevel(f_data$Species, "be","bb","mn","bw","bp")
 v1 <- ggplot(f_data, aes(x = Species, y = EngulfVolPerHr, shape = Species)) + 
   geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
