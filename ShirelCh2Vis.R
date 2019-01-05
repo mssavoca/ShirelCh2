@@ -55,14 +55,18 @@ f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
 #####################################
 
 # preliminary plots for feeding rates for deployments of >2 total hours
-p1 <- ggplot(filter(f_data, TotalHours > 2), aes(x = Species, y = LungesPerHour, shape = Species)) + 
+f_data$Species <- fct_relevel(f_data$Species, "bb","be","mn","bp","bw")
+p1 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill"), aes(x = Species, y = LungesPerHour, shape = Species)) + 
             geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
             theme_bw()
 p1
 
 
-p2 <- ggplot(f_data, aes(x = Species, y = LungesPerDayHour, color = Species, shape = Species)) + 
-  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3)
+
+
+p2 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill"), aes(x = Species, y = LungesPerDayHour, color = Species, shape = Species)) + 
+  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
+  theme_bw()
 p2
 
 
