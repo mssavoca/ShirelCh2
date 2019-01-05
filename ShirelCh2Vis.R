@@ -12,7 +12,7 @@ library(forcats)
 f_data <- read_excel("ALLPRHS 12.17.2018.xls")
 v_data <- read_excel("mwmrmeasures.xlsx")
 
-#removing unwanted columns
+#removing unwanted columns and rows
 f_data <- within(f_data, rm(notes))
 v_data <- v_data[,c(1:3)] #keeps only columns 1-3
 
@@ -56,32 +56,40 @@ f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
 
 # preliminary plots for feeding rates for deployments of >2 total hours
 f_data$Species <- fct_relevel(f_data$Species, "bb","be","mn","bp","bw")
-p1 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill"), aes(x = Species, y = LungesPerHour, shape = Species)) + 
+p1 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill" & TotalLunges > 0), aes(x = Species, y = LungesPerHour, shape = Species)) + 
             geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
             theme_bw()
 p1
 
 
+p1_mn <- ggplot(filter(f_data, Species == "mn" & TotalHours > 2 & prey != "Milk" & TotalLunges > 0), 
+                aes(x = prey, y = LungesPerHour, shape = prey)) + 
+  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
+  theme_bw()
+p1_mn
 
 
-p2 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill"), aes(x = Species, y = LungesPerDayHour, color = Species, shape = Species)) + 
+p2 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill"), aes(x = Species, y = LungesPerDayHour, shape = Species)) + 
   geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
   theme_bw()
 p2
 
 
-p3 <- ggplot(f_data, aes(x = Species, y = LungesPerNightHour, color = Species, shape = Species)) + 
-  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T)# + geom_violin(inherit.aes = T, alpha = 0.3)
+p3 <- ggplot(f_data, aes(x = Species, y = LungesPerNightHour, shape = Species)) + 
+  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
+  theme_bw()
 p3
 
 
 # feeding rates by total length
-MeasuredWhales <- filter(f_data, Length > 5 & TotalHours > 2)
+MeasuredWhales <- filter(f_data, TotalHours > 2 & prey == "Krill" & Species == "bw" & TotalLunges > 0)
 p4 <- ggplot(MeasuredWhales, aes(Length, LungesPerDayHour)) +
             geom_point(inherit.aes = T, shape = MeasuredWhales$Species) +  
             geom_smooth(method = lm) +
             theme_bw()
 p4
+
+summary(p4)
 
 # these premliminary results are counterinuitive, but relationship is significant
 m1 <- lm(MeasuredWhales$LungesPerHour~MeasuredWhales$Length)
@@ -89,6 +97,7 @@ summary(m1)
 
 m2 <- lm(MeasuredWhales$LungesPerDayHour~MeasuredWhales$Length)
 summary(m2)
+
 
 # preliminary plots for filtration capacity
 f_data$Species <- fct_relevel(f_data$Species, "be","bb","mn","bw","bp")
