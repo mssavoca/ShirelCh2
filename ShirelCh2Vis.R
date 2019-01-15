@@ -59,8 +59,9 @@ f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
 f_data$Species <- fct_relevel(f_data$Species, "bb","be","mn","bp","bw")
 p1 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill" & TotalLunges > 0), aes(x = Species, y = LungesPerHour, shape = Species)) + 
             geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
-            theme_bw()
-p1
+            ylab("Number of lunges per hour") + theme_bw()
+p1 + scale_x_discrete(labels=c("bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
+    theme(legend.position="none")
 
 
 p1_mn <- ggplot(filter(f_data, Species == "mn" & TotalHours > 2 & prey != "Milk" & TotalLunges > 0), 
@@ -102,9 +103,10 @@ summary(m2)
 
 # preliminary plots for filtration capacity
 f_data$Species <- fct_relevel(f_data$Species, "be","bb","mn","bw","bp")
-v1 <- ggplot(f_data, aes(x = Species, y = EngulfVolPerHr, shape = Species)) + 
+v1 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerHr, shape = Species)) + 
   geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
-  theme_bw()
-v1
+  ylab("Filtration capacity (liters per hour)") + theme_bw()
+v1 + scale_x_discrete(labels=c("bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
+  theme(legend.position="none")
 
 
