@@ -28,9 +28,6 @@ v_data <- read_excel("mwmrmeasures.xlsx")
 #removing unwanted columns and rows
 f_data <- within(f_data, rm(notes))
 
-
-
-
 #f_data <- filter(f_data, prey != "Milk")  # not working, also deleting rows with NAs
 v_data <- v_data[,c(1:3)] #keeps only columns 1-3
 
