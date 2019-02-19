@@ -11,6 +11,7 @@ library(tidyverse)
 library(mgsub)
 library(mgcv)
 library(gam.plot)
+library(rpart)
 
 # read in data
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
@@ -32,34 +33,40 @@ f_data <- within(f_data, rm(notes))
 
 #f_data <- filter(f_data, prey != "Milk")  # not working, also deleting rows with NAs
 v_data <- v_data[,c(1:3)] #keeps only columns 1-3
-
-# add a species column using the first two letters of Individual ID
-f_data$Species <- substr(f_data$ID,1,2)
-
-# adding/editing columns
-f_data$TotalLunges <- f_data$dayhourslunges + 
-                      f_data$nighthourslunges + 
-                      f_data$twilightzonelunges
-f_data$TotalHours <- f_data$dayhours + f_data$nighthours + f_data$twilightzone
-f_data$LungesPerHour <- f_data$TotalLunges/f_data$TotalHours
-f_data$LungesPerDayHour <- f_data$dayhourslunges/f_data$dayhours
-f_data$LungesPerNightHour <- f_data$nighthourslunges/f_data$nighthours
-f_data$LungesPerTwHour <- f_data$twilightzonelunges/f_data$twilightzone
-f_data$Length <- gsub(" m", "", f_data$whaleLength)  # removing "m" from the Length column
-f_data$Length <- as.numeric(f_data$Length)
-
-# 
-f_data = f_data %>% separate(prey, into = c("Prey", "Prey notes"), sep = " ") %>% 
-  select(-whaleLength)
-
-
+names(v_data)[names(v_data) == 'Species'] <- 'CommonName'
 v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
 
-
 # create table looking at averages of MW 
-v_data_species <- v_data %>% group_by(Species) %>% 
-                  summarize(Mean_L = mean(L), Med_L = median(L), 
-                            Mean_TL = mean(TLm), Med_TL = median(TLm))
+v_data_species <- v_data %>% group_by(CommonName) %>% 
+  summarize(Mean_L = mean(L), Med_L = median(L), 
+            Mean_TL = mean(TLm), Med_TL = median(TLm))
+
+v_data <- left_join(v_data, v_data_species, by = "CommonName") 
+
+
+
+# cleaning data and adding columns
+f_data = f_data %>% 
+  mutate(Species = substr(f_data$ID,1,2),
+         CommonName = ifelse(Species == "bw", "Blue Whale",
+                                    ifelse(Species == "bp", "Fin Whale",
+                                           ifelse(Species == "mn", "Humpback Whale",
+                                                  ifelse(Species == "bb", "Minke Whale", "Bryde's Whale")))),
+        TotalLunges = dayhourslunges + nighthourslunges + twilightzonelunges,
+        TotalHours = dayhours + nighthours + twilightzone,
+        LungesPerHour = TotalLunges/TotalHours,
+        LungesPerDayHour = dayhourslunges/dayhours,
+        LungesPerNightHour = nighthourslunges/nighthours,
+        LungesPerTwHour = twilightzonelunges/twilightzone,
+        Length = as.numeric(gsub(" m", "", f_data$whaleLength))) %>% 
+  select(-whaleLength) %>% 
+  separate(prey, into = c("Prey", "Prey notes"), sep = " ")
+
+
+f_data$CommonName = ifelse(f_data$Species == "bw", "Blue Whale",
+                           ifelse(f_data$Species == "bp", "Fin Whale",
+                                  ifelse(f_data$Species == "mn", "Humpback Whale",
+                                         ifelse(f_data$Species == "bb", "Minke Whale", "Bryde's Whale"))))
 
 # adding column with average engulfment volume by species, averages from v_data_species
 f_data$EngulfmentVolume <- ifelse(f_data$Species == "be", 15498.377,
@@ -76,11 +83,16 @@ f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
 # Prelim stats, GAMMs
 
 # GAMMs with both Odontocetes and Mysticetes in the model
-feeding_rate_model <- gam(LungesPerHour ~ Species+Prey+Study_Area,  data=f_data)
-feeding_rate_model <- lm(LungesPerHour ~ Species+Prey+Study_Area,  data=f_data)
+feeding_rate_model <- aov(LungesPerHour ~ Species+Prey+Study_Area,  data=filter(f_data, Prey =="Krill"))
+
+feeding_rate_model <- rpart(LungesPerHour ~ Species+Prey+Study_Area, data=f_data, method = "class", cp =)
+
+
+
 
 ### $gam to look at gam effects. $lme to look at random effects.
 summary(feeding_rate_model)
+TukeyHSD(feeding_rate_model)
 
 plot.gam(feeding_rate_model)
 
