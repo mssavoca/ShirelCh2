@@ -44,7 +44,6 @@ v_data_species <- v_data %>% group_by(CommonName) %>%
 v_data <- left_join(v_data, v_data_species, by = "CommonName") 
 
 
-
 # cleaning data and adding columns
 f_data = f_data %>% 
   mutate(Species = substr(f_data$ID,1,2),
@@ -62,17 +61,29 @@ f_data = f_data %>%
   select(-whaleLength) %>% 
   separate(prey, into = c("Prey", "Prey notes"), sep = " ")
 
+# combining dataframes into what we need
+fv_data <- left_join(f_data, v_data_species, by = "CommonName")
 
-f_data$CommonName = ifelse(f_data$Species == "bw", "Blue Whale",
-                           ifelse(f_data$Species == "bp", "Fin Whale",
-                                  ifelse(f_data$Species == "mn", "Humpback Whale",
-                                         ifelse(f_data$Species == "bb", "Minke Whale", "Bryde's Whale"))))
+# creating fucntions for engulfment capacity in liters for each species where we have a known length
+bw_L <- function(x) {
+  (x^3.667316*10^-0.014078)*0.9766
+}
 
-# adding column with average engulfment volume by species, averages from v_data_species
-f_data$EngulfmentVolume <- ifelse(f_data$Species == "be", 15498.377,
-                                  ifelse(f_data$Species == "bw", 55349.402, 
-                                         ifelse(f_data$Species == "bp", 56682.353,
-                                                ifelse(f_data$Species == "mn",25091.473, 2755.317))))
+bp_L <- function(x) {
+  (x^3.54883*10^0.15604)*0.9766
+}
+
+mn_L <- function(x) {
+  (x^3.24603*10^0.85934)*0.9766
+}
+
+ba_L <- function(x) {
+  (x^3.10910*10^0.69969)*0.9766
+}
+
+be_L <- function(x) {
+  (x^3.1453*10^0.5787)*0.9766
+}
 
 f_data$EngulfVolPerHr <- f_data$LungesPerHour*f_data$EngulfmentVolume
 
