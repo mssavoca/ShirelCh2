@@ -9,6 +9,8 @@ library(readxl)
 library(forcats)
 library(tidyverse)
 library(mgsub)
+library(mgcv)
+library(gam.plot)
 
 # read in data
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
@@ -47,7 +49,8 @@ f_data$Length <- gsub(" m", "", f_data$whaleLength)  # removing "m" from the Len
 f_data$Length <- as.numeric(f_data$Length)
 
 # 
-f_data = f_data %>% separate(prey, into = c("Prey", "Prey notes"), sep = " ")
+f_data = f_data %>% separate(prey, into = c("Prey", "Prey notes"), sep = " ") %>% 
+  select(-whaleLength)
 
 
 v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
@@ -70,9 +73,19 @@ f_data$EngulfVolPerHr <- f_data$LungesPerHour*f_data$EngulfmentVolume
 f_data$Species <- as.factor(f_data$Species)
 f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
 
+# Prelim stats, GAMMs
 
+# GAMMs with both Odontocetes and Mysticetes in the model
+feeding_rate_model <- gam(LungesPerHour ~ Species+Prey+Study_Area,  data=f_data)
+feeding_rate_model <- lm(LungesPerHour ~ Species+Prey+Study_Area,  data=f_data)
 
+### $gam to look at gam effects. $lme to look at random effects.
+summary(feeding_rate_model)
 
+plot.gam(feeding_rate_model)
+
+library(car)
+Anova(feeding_rate_model, type = 3)
 
 #####################################
 ## Plots
