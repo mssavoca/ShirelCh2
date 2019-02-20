@@ -150,30 +150,70 @@ p3
 
 # feeding rates by total length
 MeasuredWhales <- filter(fv_data, TotalHours > 2 & Prey == "Krill" & TotalLunges > 0)
-p4 <- ggplot(MeasuredWhales, aes(Length, EmpEngulfCap)) +
-            geom_point(inherit.aes = T, aes(shape = CommonName)) +  
+p4 <- ggplot(MeasuredWhales, aes(Length, LungesPerDayHour)) +
+            geom_point(inherit.aes = T) +  
             geom_smooth(method = lm) +
             theme_bw()
 p4
 
 summary(p4)
 
-# these premliminary results are counterinuitive, but relationship is significant
-m1 <- lm(MeasuredWhales$LungesPerHour~MeasuredWhales$Length)
-summary(m1)
-
-m2 <- lm(MeasuredWhales$LungesPerDayHour~MeasuredWhales$Length)
-summary(m2)
 
 
+# # these premliminary results are counterinuitive, but relationship is significant
+# m1 <- lm(MeasuredWhales$LungesPerHour~MeasuredWhales$Length)
+# summary(m1)
+# 
+# m2 <- lm(MeasuredWhales$LungesPerDayHour~MeasuredWhales$Length)
+# summary(m2)
+
+###########################################
 # preliminary plots for filtration capacity
+###########################################
+
+pal <- c(
+  "Minke Whale" = "red",
+  "Bryde's Whale" = "orange", 
+  "Humpback Whale" = "yellow", 
+  "Fin Whale" = "black",
+  "Blue Whale" = "blue" 
+)
+
+EmpEngulfCapPLot <- ggplot(fv_data, aes(Length, EmpEngulfCap)) +
+  geom_point(inherit.aes = T, aes(shape = CommonName, color = CommonName)) +  
+  geom_smooth(method = lm) +
+  xlab("Length (m)") + ylab("Engulfment capacity (L)") +
+  ggtitle("Engulfment Capacity by length for whales measured by drone") +
+  #scale_fill_discrete(name = "New Legend Title") +
+  scale_x_discrete(limits = rev(levels(fv_data$CommonName))) +
+  scale_fill_manual(values = pal,limits = names(pal)) +
+  theme_bw()
+EmpEngulfCapPLot
+
+
 fv_data$Species <- fct_relevel(fv_data$Species, "be","bb","mn","bp","bw")
-v1 <- ggplot(filter(fv_data, TotalHours > 2 & Prey == "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerDayHr, shape = Species)) + 
-  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
-  ylab("Filtration capacity (liters per hour)") + theme_bw()
-v1 + scale_x_discrete(labels=c("bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
+
+v1 <- ggplot(filter(fv_data, TotalHours > 2 & Prey != "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerDayHr, color = CommonName)) + 
+  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  ylab("Filtration capacity (liters per day hour)") + ggtitle("Water volume filtered per hour (fish feeding whales)") +
+  theme_bw()
+v1 + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
   theme(legend.position="none")
 
+
+g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = EmotionCondition)) +
+  geom_flat_violin(position = position_nudge(x = .2, y = 0), alpha = .8) +
+  geom_point(aes(y = Sensitivity, color = EmotionCondition), position = position_jitter(width = .15), size = .5, alpha = 0.8) +
+  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  expand_limits(x = 5.25) +
+  guides(fill = FALSE) +
+  guides(color = FALSE) +
+  scale_color_brewer(palette = "Spectral") +
+  scale_fill_brewer(palette = "Spectral") +
+  # coord_flip() +
+  theme_bw() +
+  raincloud_theme
 
 
 ###############################################
