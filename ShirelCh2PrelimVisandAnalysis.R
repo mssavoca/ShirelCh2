@@ -14,6 +14,9 @@ library(lme4)
 library(nlme)
 library(lmerTest)
 
+# formula for standard error
+SE = function(x){sd(x)/sqrt(sum(!is.na(x)))}
+
 # read in data
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
 
@@ -89,8 +92,13 @@ f_data = f_data %>%
   filter(!Prey %in% c("Milk", "N")) %>% 
   mutate(PreyClean = case_when(
     Prey %in% c("Anchovies", "Fish", "Herring", "SandLance", "Sardines")  ~ "Fish-feeding",
-    Prey %in% c("Inverts", "Krill") ~ "Krill-feeding"
-  ))  
+    Prey %in% c("Inverts", "Krill") ~ "Krill-feeding"), 
+  Region = case_when(
+    Study_Area %in% c("Monterey", "SoCal", "Cordell Bank", "San Diego", "WA Coast")  ~ "Eastern North Pacific",
+    Study_Area %in% c("Stellwagen", "Norway", "Azores", "Greenland") ~ "North Atlantic",
+    Study_Area == "South Africa" ~ "South Africa",
+    Study_Area == "Antarctic" ~ "Antarctic",
+    Study_Area == "Chile" ~ "Chile"))
 
 
 
@@ -111,32 +119,37 @@ fv_data <- f_data %>%
 # Prelim stats exploration
 ##########################
 
-a = filter(fv_data, TotalHours >2 & TotalLunges >0, PreyClean =="Krill")
+a = filter(fv_data, TotalHours >2 & TotalLunges >0)
 hist(log(a$LungesPerHour))
 
-# log transformed fgorcing it to be normal, so no need for a generalized linear model
+b = fv_data %>% 
+  filter(TotalHours >2 & TotalLunges >0, PreyClean =="Krill-feeding") %>% 
+  group_by(Region) %>% 
+  summarize(meanLR = mean(LungesPerHour),
+            medLR = median(LungesPerHour),
+            SE_LR = SE(LungesPerHour))
+
+# log transformed forcing response to be normal, so no need for a generalized linear model
 m1 <- lm(log(LungesPerHour + 1) ~ PreyClean, data = a)
 summary(m1)
 TukeyHSD(aov(m1))
 
-m2 <- lm(log(LungesPerHour + 1) ~ Species, data = filter(a, PreyClean == "Fish"))
+m2 <- lm(log(LungesPerHour + 1) ~ Species, data = filter(a, PreyClean == "Fish-feeding")) # Change to "Krill-feeding" for Species differences among krill feeding individuals
 summary(m2)
 TukeyHSD(aov(m2))
 
+# random effects needed, so used a GLMM
 m3 <- lmer(log(LungesByDaySection + 1) ~ DaySection + (1|ID),
-            filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & CommonName %in% c("Blue Whale", "Humpback Whale")))
+            filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & Study_Area %in% c("Monterey", "SoCal")))
+anova(m3)
 summary(m3)
-OR
 
-m3_nlme <- lme(log(LungesByDaySection + 1) ~ DaySection ,random=~1|ID, 
-               data=filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & CommonName %in% c("Blue Whale", "Humpback Whale")))
-anova(m3_nlme)
+m4 <- lmer(log(LungesPerHour + 1) ~ Region + (1|Species), 
+         filter(a, Region %in% c("Antarctic", "Eastern North Pacific", "North Atlantic"), PreyClean == "Krill-feeding"))
+anova(m4)
+summary(m4)
 
 
-u=filter(a,PreyClean=="Krill")
-m3 <- lm(log(LungesPerHour + 1) ~ Species, data = a)
-summary(m3)
-TukeyHSD(aov(m3))
 
 
 
@@ -147,7 +160,10 @@ TukeyHSD(aov(m3))
 # TukeyHSD(aov(m3))
 # 
 # # GAMMs with both Odontocetes and Mysticetes in the model
-# feeding_rate_model <- aov(LungesPerHour ~ Species + Prey + Study_Area,  data=filter(f_data, Prey =="Krill"))
+feeding_rate_model <- gam(LungesPerHour ~ Species + PreyClean + Study_Area,  data=f_data)
+termplot(feeding_rate_model)
+
+
 # 
 # feeding_rate_model <- rpart(LungesPerHour ~ Species+Prey+Study_Area, data=f_data, method = "class", cp =)
 # 
@@ -170,7 +186,7 @@ Shape <- c("Minke Whale" = 15, "Bryde's Whale" = 8,  "Humpback Whale" = 17, "Fin
 
 LungebyPrey <- ggplot(filter(f_data, TotalHours > 2 & TotalLunges > 0), aes(x = PreyClean, y = LungesPerHour)) + 
   geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
-  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.1) +
   ylab("Lunges per hour") + xlab("Prey type") + 
   theme_bw() +
   theme(axis.text=element_text(size=12),
@@ -182,7 +198,7 @@ f_data$Species <- as.factor(fct_relevel(f_data$Species, "be","bw","bp","mn","bb"
 
 LungebySpecies <- ggplot(filter(f_data, TotalHours > 2 & TotalLunges > 0), aes(x = Species, y = LungesPerHour, shape = CommonName, color =  CommonName)) + 
   geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
-  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.1) +
   facet_grid(.~PreyClean, scales = "free_x") +
   scale_colour_manual(values = pal) +
   scale_shape_manual(values=Shape) +
@@ -198,40 +214,47 @@ LungebySpecies + scale_x_discrete(labels=c("be" = "Bryde's whale", "mn" = "humpb
 
 
 f_data_daysection <-  gather(f_data, DaySection, LungesByDaySection, 19:21)
-f_data$LungesByDaySection[f_data$LungesByDaySection == "NaN"] <- 0 
+f_data_daysection$LungesByDaySection[f_data_daysection$LungesByDaySection == "NaN"] <- 0 
+f_data_daysection$DaySection <- as.factor(fct_relevel(f_data_daysection$DaySection, "LungesPerNightHour","LungesPerTwHour","LungesPerDayHour"))
 
-LungebyDaySection <- ggplot(filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & CommonName %in% c("Blue Whale", "Humpback Whale")), 
+LungebyDaySection <- ggplot(filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & Study_Area %in% c("Monterey", "SoCal")), 
                             aes(x = DaySection, y = LungesByDaySection, shape = CommonName, color =  CommonName)) + 
-  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
-  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5, aes(group = DaySection)) +
+  geom_point(inherit.aes = T, aes(shape = CommonName, color =  CommonName), alpha = 0.8, position = position_jitter(width = .25)) + 
+  geom_violin(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha =0.1, aes(group = DaySection)) +
   scale_colour_manual(values = pal) +
   scale_shape_manual(values=Shape) +
+  labs(col="Common name", shape = "Common name") +
   ylab("Lunges per hour") + xlab("Section of day") +
   theme_bw() +
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=14,face="bold"),
         plot.title = element_text(hjust = 0.5, size = 16), 
         strip.text.x = element_text(size = 12))
-LungebyDaySection + scale_x_discrete(labels=c("be" = "Bryde's whale", "mn" = "humpback whale", "bw" = "blue whale", "bp" = "fin whale", "bb" = "minke whale")) +
-  theme(legend.position="none")
+LungebyDaySection + scale_x_discrete(labels=c("LungesPerDayHour" = "Day", "LungesPerNightHour" = "Night", "LungesPerTwHour" = "Dawn and dusk")) 
 
-p1_mn <- ggplot(filter(f_data, Species == "mn" & TotalHours > 2 & prey != "Milk" & TotalLunges > 0), 
-                aes(x = prey, y = LungesPerHour, shape = prey)) + 
-  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
-  theme_bw()
-p1_mn
-
-
-p2 <- ggplot(filter(f_data, TotalHours > 2 & prey == "Krill"), aes(x = Species, y = LungesPerDayHour, shape = Species)) + 
-  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
-  theme_bw()
-p2
+ds = f_data_daysection %>% 
+  filter(TotalHours >2) %>% 
+  group_by(DaySection) %>% 
+  summarize(meanLR = mean(LungesByDaySection),
+            medLR = median(LungesByDaySection),
+            SE_LR = SE(LungesByDaySection))
 
 
-p3 <- ggplot(f_data, aes(x = Species, y = LungesPerNightHour, shape = Species)) + 
-  geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + geom_boxplot(inherit.aes = T, alpha = 0.3) +
-  theme_bw()
-p3
+LungebyRegion <- ggplot(filter(f_data, Region %in% c("Antarctic", "Eastern North Pacific", "North Atlantic"), PreyClean == "Krill-feeding"), 
+                        aes(x = Region, y = LungesPerHour)) + 
+  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25), aes(shape = CommonName, color =  CommonName)) + 
+  geom_boxplot(outlier.shape = NA, alpha =0.1) +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape) +
+  labs(col="Common name", shape = "Common name") +
+  ylab("Lunges per hour") + xlab("Region of study") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 16), 
+        strip.text.x = element_text(size = 12))
+LungebyRegion 
+
 
 
 # feeding rates by total length
@@ -253,63 +276,3 @@ summary(p4)
 # m2 <- lm(MeasuredWhales$LungesPerDayHour~MeasuredWhales$Length)
 # summary(m2)
 
-###########################################
-# preliminary plots for filtration capacity
-###########################################
-
-pal <- c("Minke Whale" = "firebrick3", "Bryde's Whale" = "darkorchid3",  "Humpback Whale" = "gray30", "Fin Whale" = "chocolate3", "Blue Whale" = "dodgerblue2" )
-Shape <- c("Minke Whale" = 15, "Bryde's Whale" = 8,  "Humpback Whale" = 17, "Fin Whale" = 18, "Blue Whale" = 19 )
-
-EmpEngulfCapPLot <- ggplot(fv_data, aes(Length, EmpEngulfCap)) +
-  geom_point(inherit.aes = T, aes(shape = CommonName, color = CommonName), size = 2) + 
-  labs(col="Common name", shape = "Common name") +
-  geom_smooth(method = lm) +
-  xlab("Length (m)") + ylab("Engulfment capacity (L)") +
-  ggtitle("Engulfment capacity by length for whales measured by drone") +
-  scale_colour_manual(values = pal) +
-  scale_shape_manual(values=Shape)+
-  theme_bw()
-EmpEngulfCapPLot 
-
-fv_data$Species <- fct_relevel(fv_data$Species, "be","bb","mn","bp","bw")
-
-v1 <- ggplot(filter(fv_data, TotalHours > 2 & Prey != "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerDayHr, color = CommonName)) + 
-  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
-  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
-  scale_colour_manual(values = pal) +
-  scale_shape_manual(values=Shape) +
-  ylab("Filtration capacity (liters d-1 h)") + ggtitle("Water volume filtered per hour (fish feeding whales)") +
-  theme_bw()
-v1 + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
-  theme(legend.position="none")
-
-
-g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = EmotionCondition)) +
-  geom_flat_violin(position = position_nudge(x = .2, y = 0), alpha = .8) +
-  geom_point(aes(y = Sensitivity, color = EmotionCondition), position = position_jitter(width = .15), size = .5, alpha = 0.8) +
-  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
-  expand_limits(x = 5.25) +
-  guides(fill = FALSE) +
-  guides(color = FALSE) +
-  scale_color_brewer(palette = "Spectral") +
-  scale_fill_brewer(palette = "Spectral") +
-  # coord_flip() +
-  theme_bw() +
-  raincloud_theme
-
-
-###############################################
-# for funsies, some back of the envelope calcs:
-###############################################
-
-# volume of water in upper 300m of Monterey Bay
-((pi*20000^2*300)/2)*1000 # this equals 1.884956e+14 (9.42478e+13 for half cylinder), a blue whale filters ~1000000 per hour, or 24000000 per day
-1.884956e+14/12000000 # the number of blue whale days it takes to filter the bay
-
-# for the world's oceans, see: https://www.ngdc.noaa.gov/mgg/global/etopo1_ocean_volumes.html
-
-# in the Southern Ocean
-(1335000000*0.1)*1000000000000  # total volume in L of water in the upper 10% of water column (~368m) Southern Ocean 
-2000*12000000 # approximate amount of water filtered by current population of Southern Ocean blue whales 
-350000*12000000 # approximate amount of water filtered by pre-exploitation population of Southern Ocean blue whales 
-1.335e+20/4.2e+12
