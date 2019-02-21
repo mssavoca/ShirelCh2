@@ -11,6 +11,8 @@ library(tidyverse)
 library(mgcv)
 library(rpart)
 library(lme4)
+library(nlme)
+library(lmerTest)
 
 # read in data
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
@@ -86,12 +88,10 @@ f_data = f_data %>%
   drop_na(Prey) %>% 
   filter(!Prey %in% c("Milk", "N")) %>% 
   mutate(PreyClean = case_when(
-    Prey %in% c("Anchovies", "Fish", "Herring", "SandLance", "Sardines")  ~ "Fish",
-    Prey %in% c("Inverts", "Krill") ~ "Krill"
-  )) %>% 
-  gather(DaySection, LungesByDaySection, 19:21)
+    Prey %in% c("Anchovies", "Fish", "Herring", "SandLance", "Sardines")  ~ "Fish-feeding",
+    Prey %in% c("Inverts", "Krill") ~ "Krill-feeding"
+  ))  
 
-f_data$LungesByDaySection[f_data$LungesByDaySection == "NaN"] <- 0 
 
 
 # combining dataframes into what we need
@@ -122,6 +122,16 @@ TukeyHSD(aov(m1))
 m2 <- lm(log(LungesPerHour + 1) ~ Species, data = filter(a, PreyClean == "Fish"))
 summary(m2)
 TukeyHSD(aov(m2))
+
+m3 <- lmer(log(LungesByDaySection + 1) ~ DaySection + (1|ID),
+            filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & CommonName %in% c("Blue Whale", "Humpback Whale")))
+summary(m3)
+OR
+
+m3_nlme <- lme(log(LungesByDaySection + 1) ~ DaySection ,random=~1|ID, 
+               data=filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & CommonName %in% c("Blue Whale", "Humpback Whale")))
+anova(m3_nlme)
+
 
 u=filter(a,PreyClean=="Krill")
 m3 <- lm(log(LungesPerHour + 1) ~ Species, data = a)
@@ -170,7 +180,7 @@ LungebyPrey
 
 f_data$Species <- as.factor(fct_relevel(f_data$Species, "be","bw","bp","mn","bb"))
 
-LungebySpeciesFish <- ggplot(filter(f_data, TotalHours > 2 & TotalLunges > 0), aes(x = Species, y = LungesPerHour, shape = CommonName, color =  CommonName)) + 
+LungebySpecies <- ggplot(filter(f_data, TotalHours > 2 & TotalLunges > 0), aes(x = Species, y = LungesPerHour, shape = CommonName, color =  CommonName)) + 
   geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
   geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
   facet_grid(.~PreyClean, scales = "free_x") +
@@ -182,9 +192,28 @@ LungebySpeciesFish <- ggplot(filter(f_data, TotalHours > 2 & TotalLunges > 0), a
         axis.title=element_text(size=14,face="bold"),
         plot.title = element_text(hjust = 0.5, size = 16), 
         strip.text.x = element_text(size = 12))
-LungebySpeciesFish + scale_x_discrete(labels=c("be" = "Bryde's whale", "mn" = "humpback whale", "bw" = "blue whale", "bp" = "fin whale", "bb" = "minke whale")) +
+LungebySpecies + scale_x_discrete(labels=c("be" = "Bryde's whale", "mn" = "humpback whale", "bw" = "blue whale", "bp" = "fin whale", "bb" = "minke whale")) +
     theme(legend.position="none")
 
+
+
+f_data_daysection <-  gather(f_data, DaySection, LungesByDaySection, 19:21)
+f_data$LungesByDaySection[f_data$LungesByDaySection == "NaN"] <- 0 
+
+LungebyDaySection <- ggplot(filter(f_data_daysection, TotalHours > 2 & PreyClean == "Krill-feeding" & CommonName %in% c("Blue Whale", "Humpback Whale")), 
+                            aes(x = DaySection, y = LungesByDaySection, shape = CommonName, color =  CommonName)) + 
+  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5, aes(group = DaySection)) +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape) +
+  ylab("Lunges per hour") + xlab("Section of day") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 16), 
+        strip.text.x = element_text(size = 12))
+LungebyDaySection + scale_x_discrete(labels=c("be" = "Bryde's whale", "mn" = "humpback whale", "bw" = "blue whale", "bp" = "fin whale", "bb" = "minke whale")) +
+  theme(legend.position="none")
 
 p1_mn <- ggplot(filter(f_data, Species == "mn" & TotalHours > 2 & prey != "Milk" & TotalLunges > 0), 
                 aes(x = prey, y = LungesPerHour, shape = prey)) + 
