@@ -10,6 +10,7 @@ library(forcats)
 library(tidyverse)
 library(mgcv)
 library(rpart)
+library(lme4)
 
 # read in data
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
@@ -81,7 +82,16 @@ f_data = f_data %>%
                                             ifelse(CommonName == "Humpback Whale", mn_L(Length),
                                                    ifelse(CommonName == "Minke Whale", ba_L(Length), be_L(Length)))))) %>% 
   select(-whaleLength) %>% 
-  separate(prey, into = c("Prey", "Prey notes"), sep = " ")
+  separate(prey, into = c("Prey", "Prey notes"), sep = " ") %>% 
+  drop_na(Prey) %>% 
+  filter(!Prey %in% c("Milk", "N")) %>% 
+  mutate(PreyClean = case_when(
+    Prey %in% c("Anchovies", "Fish", "Herring", "SandLance", "Sardines")  ~ "Fish",
+    Prey %in% c("Inverts", "Krill") ~ "Krill"
+  )) %>% 
+  gather(DaySection, LungesByDaySection, 19:21)
+
+f_data$LungesByDaySection[f_data$LungesByDaySection == "NaN"] <- 0 
 
 
 # combining dataframes into what we need
@@ -101,31 +111,78 @@ fv_data <- f_data %>%
 # Prelim stats exploration
 ##########################
 
-# GAMMs with both Odontocetes and Mysticetes in the model
-feeding_rate_model <- aov(LungesPerHour ~ Species+Prey+Study_Area,  data=filter(f_data, Prey =="Krill"))
+a = filter(fv_data, TotalHours >2 & TotalLunges >0, PreyClean =="Krill")
+hist(log(a$LungesPerHour))
 
-feeding_rate_model <- rpart(LungesPerHour ~ Species+Prey+Study_Area, data=f_data, method = "class", cp =)
+# log transformed fgorcing it to be normal, so no need for a generalized linear model
+m1 <- lm(log(LungesPerHour + 1) ~ PreyClean, data = a)
+summary(m1)
+TukeyHSD(aov(m1))
 
-### $gam to look at gam effects. $lme to look at random effects.
-summary(feeding_rate_model)
-TukeyHSD(feeding_rate_model)
+m2 <- lm(log(LungesPerHour + 1) ~ Species, data = filter(a, PreyClean == "Fish"))
+summary(m2)
+TukeyHSD(aov(m2))
 
-plot.gam(feeding_rate_model)
+u=filter(a,PreyClean=="Krill")
+m3 <- lm(log(LungesPerHour + 1) ~ Species, data = a)
+summary(m3)
+TukeyHSD(aov(m3))
 
-library(car)
-Anova(feeding_rate_model, type = 3)
+
+
+# m2 <- lm(log(LungesPerHour + 1) ~ Species*PreyClean, data = a)
+# summary(m2)
+# 
+# m3 <- lm(log(LungesByDaySection + 1) ~ Species*PreyClean + DaySection, data = filter(f_data, TotalHours >2))
+# TukeyHSD(aov(m3))
+# 
+# # GAMMs with both Odontocetes and Mysticetes in the model
+# feeding_rate_model <- aov(LungesPerHour ~ Species + Prey + Study_Area,  data=filter(f_data, Prey =="Krill"))
+# 
+# feeding_rate_model <- rpart(LungesPerHour ~ Species+Prey+Study_Area, data=f_data, method = "class", cp =)
+# 
+# ### $gam to look at gam effects. $lme to look at random effects.
+# summary(feeding_rate_model)
+# TukeyHSD(feeding_rate_model)
+# 
+# plot.gam(feeding_rate_model)
+# 
+# library(car)
+# Anova(feeding_rate_model, type = 3)
 
 #####################################
 ## Plots
 #####################################
+pal <- c("Minke Whale" = "firebrick3", "Bryde's Whale" = "darkorchid3",  "Humpback Whale" = "gray30", "Fin Whale" = "chocolate3", "Blue Whale" = "dodgerblue2" )
+Shape <- c("Minke Whale" = 15, "Bryde's Whale" = 8,  "Humpback Whale" = 17, "Fin Whale" = 18, "Blue Whale" = 19 )
 
 # preliminary plots for feeding rates for deployments of >2 total hours
-f_data$Species <- fct_relevel(f_data$Species, "bb","be","mn","bp","bw")
-p1 <- ggplot(filter(fv_data, TotalHours > 2 & Prey == "Krill" & TotalLunges > 0), aes(x = Species, y = LungesPerHour, shape = Species)) + 
-            geom_point(inherit.aes = T) + geom_jitter(inherit.aes = T) + 
-            geom_boxplot(inherit.aes = T, alpha = 0.3, outlier.size = 0) +
-            ylab("Number of lunges per hour") + theme_bw()
-p1 + scale_x_discrete(labels=c("bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
+
+LungebyPrey <- ggplot(filter(f_data, TotalHours > 2 & TotalLunges > 0), aes(x = PreyClean, y = LungesPerHour)) + 
+  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  ylab("Lunges per hour") + xlab("Prey type") + 
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"))
+LungebyPrey
+
+
+f_data$Species <- as.factor(fct_relevel(f_data$Species, "be","bw","bp","mn","bb"))
+
+LungebySpeciesFish <- ggplot(filter(f_data, TotalHours > 2 & TotalLunges > 0), aes(x = Species, y = LungesPerHour, shape = CommonName, color =  CommonName)) + 
+  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  facet_grid(.~PreyClean, scales = "free_x") +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape) +
+  ylab("Lunges per hour") + xlab("Species") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 16), 
+        strip.text.x = element_text(size = 12))
+LungebySpeciesFish + scale_x_discrete(labels=c("be" = "Bryde's whale", "mn" = "humpback whale", "bw" = "blue whale", "bp" = "fin whale", "bb" = "minke whale")) +
     theme(legend.position="none")
 
 
@@ -171,32 +228,28 @@ summary(p4)
 # preliminary plots for filtration capacity
 ###########################################
 
-pal <- c(
-  "Minke Whale" = "red",
-  "Bryde's Whale" = "orange", 
-  "Humpback Whale" = "yellow", 
-  "Fin Whale" = "black",
-  "Blue Whale" = "blue" 
-)
+pal <- c("Minke Whale" = "firebrick3", "Bryde's Whale" = "darkorchid3",  "Humpback Whale" = "gray30", "Fin Whale" = "chocolate3", "Blue Whale" = "dodgerblue2" )
+Shape <- c("Minke Whale" = 15, "Bryde's Whale" = 8,  "Humpback Whale" = 17, "Fin Whale" = 18, "Blue Whale" = 19 )
 
 EmpEngulfCapPLot <- ggplot(fv_data, aes(Length, EmpEngulfCap)) +
-  geom_point(inherit.aes = T, aes(shape = CommonName, color = CommonName)) +  
+  geom_point(inherit.aes = T, aes(shape = CommonName, color = CommonName), size = 2) + 
+  labs(col="Common name", shape = "Common name") +
   geom_smooth(method = lm) +
   xlab("Length (m)") + ylab("Engulfment capacity (L)") +
-  ggtitle("Engulfment Capacity by length for whales measured by drone") +
-  #scale_fill_discrete(name = "New Legend Title") +
-  scale_x_discrete(limits = rev(levels(fv_data$CommonName))) +
-  scale_fill_manual(values = pal,limits = names(pal)) +
+  ggtitle("Engulfment capacity by length for whales measured by drone") +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape)+
   theme_bw()
-EmpEngulfCapPLot
-
+EmpEngulfCapPLot 
 
 fv_data$Species <- fct_relevel(fv_data$Species, "be","bb","mn","bp","bw")
 
 v1 <- ggplot(filter(fv_data, TotalHours > 2 & Prey != "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerDayHr, color = CommonName)) + 
   geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
   geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
-  ylab("Filtration capacity (liters per day hour)") + ggtitle("Water volume filtered per hour (fish feeding whales)") +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape) +
+  ylab("Filtration capacity (liters d-1 h)") + ggtitle("Water volume filtered per hour (fish feeding whales)") +
   theme_bw()
 v1 + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
   theme(legend.position="none")
