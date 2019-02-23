@@ -114,6 +114,18 @@ fv_data <- f_data %>%
 # f_data$Species <- as.factor(f_data$Species)
 # f_data$Species <- fct_relevel(f_data$Species, "be","bw","bp","mn","bb")
 
+# looking at differences in feeding rates for tags on a full day or less than a day
+full_day = fv_data %>% filter(Species == "bw" & TotalHours > 23) 
+  hist(full_day$LungesPerHour)
+  median(full_day$LungesPerHour)
+
+part_day = fv_data %>% filter(Species == "bw" & TotalHours < 15) 
+  hist(part_day$LungesPerHour)
+  median(part_day$LungesPerHour)
+
+  
+  
+  
 
 ##########################
 # Prelim stats exploration

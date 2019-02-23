@@ -108,7 +108,14 @@ fv_data <- f_data %>%
          EngulfVolPerDayHr = LungesPerDayHour*Med_Recalc_L) %>% 
   select(-c(Med_L, Mean_L))
 
+# looking at differences in feeding rates for tags on a full day or less than a day
+full_day = fv_data %>% filter(Species == "bw" & TotalHours > 23) 
+hist(full_day$LungesPerHour)
+median(full_day$LungesPerHour)
 
+part_day = fv_data %>% filter(Species == "bw" & TotalHours < 15) 
+hist(part_day$LungesPerHour)
+median(part_day$LungesPerHour)
 
 # load data
 d_full_NULL <- read_csv("Cetacea model output NULL_EXTANT.csv") %>% 
@@ -154,7 +161,7 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = "ID") %>%
 
 # Gather scenarios, view output
 scenario_data <- cetacean_data %>% 
-  filter(TotalTagTime_h > 2, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%   #  & sonar_exp %in% c("none", NA) # possibly includ sonar exp, but it takes away several blues and one fin whale
+  filter(TotalTagTime_h > 23, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%   #  & sonar_exp %in% c("none", NA) # possibly includ sonar exp, but it takes away several blues and one fin whale
   select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E) %>%
   gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
 #  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
@@ -164,39 +171,61 @@ scenario_data <- cetacean_data %>%
   mutate(prey_wt_d_t = (hourly_prey_in_g*6)/1000/1000) %>% 
   group_by(Species, scenario, scenario_type, calc_type) %>% 
   summarize(mean_hourly_prey_in_g = mean(hourly_prey_in_g),
-            mean_prey_wt_d_t = mean(prey_wt_d_t)) %>% View
+            mean_prey_wt_d_t = mean(prey_wt_d_t)) 
 
 
-  group_by(Species, scenario, scenario_type, calc_type) %>%
-  summarize(mean_hourly_prey_in_g = mean(hourly_prey_in_g))
-
+# run for plot of hours, up to one day
 resolution <- 100
 # Calculate feeding over time (for plotting)
-max_months <- 6
 max_hours <- 24
-plot_data <- tibble(t = seq(0, 24 * 30 * max_hours, length.out = resolution),
+plot_data <- tibble(t = seq(0, 24, length.out = resolution),
                     dummy = 1) %>%
   full_join(mutate(scenario_data, dummy = 1)) %>%
   select(-dummy) %>%
-  filter(Species %in% c("musculus", "physalus", "novaeangliae")) %>%
-  mutate(prey_consumed = mean_hourly_prey_in_g * t / 1e6)
+  filter(Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%
+  mutate(prey_consumed_day = mean_hourly_prey_in_g * t / 1e6)
 # Plot scenarios
-ggplot(plot_data,
-       aes(x = t / 24 / 30, 
-           y = prey_consumed, 
+PreyConsumptionbyHour <-ggplot(plot_data,
+       aes(x = t, 
+           y = prey_consumed_day, 
            linetype = calc_type, 
            color = scenario_type)) +
   geom_line() +
   theme_bw() +
   facet_grid(~Species) +
-  labs(x = "Months", y = "Prey consumed (metric tons)") +
-  geom_text(aes(y = prey_consumed - 3, 
-                label = format(prey_consumed, digits = 0)),
+  scale_y_continuous(breaks=seq(0,140,20)) +
+  labs(x = "Hours feeding", y = "Prey consumed by individual (metric tons)") +
+  geom_text(aes(y = prey_consumed_day + 2, x = 23, 
+                label = format(prey_consumed_day, digits = 0)),
             data = filter(plot_data, t == max(t)))
+#Save pdf of plot
+dev.copy2pdf(file="PreyConsumptionbyHour.pdf", width=14, height=8)
 
-
-
-
+# run for plot of months
+resolution <- 100
+# Calculate feeding over time (for plotting)
+max_months <- 6
+plot_data <- tibble(t = seq(0, 24 * 30 * max_months, length.out = resolution),
+                    dummy = 1) %>%
+  full_join(mutate(scenario_data, dummy = 1)) %>%
+  select(-dummy) %>%
+  filter(Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%
+  mutate(prey_consumed_month = mean_hourly_prey_in_g * t / 1e6)
+# Plot scenarios
+PreyConsumptionbyMonth <- ggplot(plot_data,
+       aes(x = t / 24 / 30, 
+           y = prey_consumed_month, 
+           linetype = calc_type, 
+           color = scenario_type)) +
+  facet_grid(~Species) +
+  geom_line() +
+  theme_bw() +
+  labs(x = "Months feeding", y = "Prey consumed per individual (metric tons)") +
+  geom_text(aes(y = prey_consumed_month + 400, x =  5.5,
+                label = format(prey_consumed_month, digits = 0)),
+            data = filter(plot_data, t == max(t)))
+#Save pdf of plot
+dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
 
 ##########################
 # Prelim stats exploration
