@@ -20,15 +20,15 @@ SE = function(x){sd(x)/sqrt(sum(!is.na(x)))}
 # load, clean, combine and summarize data
 ##########################################
 # get Alex Boersma's illustrations for figures
-imgBw <- png::readPNG("./Blue.png")
+imgBw <- png::readPNG("./Blue-min.png")
 rastBw <- grid::rasterGrob(imgBw, interpolate = T)
-imgBp <- png::readPNG("./Fin.png")
+imgBp <- png::readPNG("./Fin-min.png")
 rastBp <- grid::rasterGrob(imgBp, interpolate = T)
-imgBe <- png::readPNG("./Bryde's.png")
+imgBe <- png::readPNG("./Bryde's-min.png")
 rastBe <- grid::rasterGrob(imgBe, interpolate = T)
-imgMn <- png::readPNG("./Humpback.png")
+imgMn <- png::readPNG("./Humpback-min_optimized.png")
 rastMn <- grid::rasterGrob(imgMn, interpolate = T)
-imgBb <- png::readPNG("./Minke.png")
+imgBb <- png::readPNG("./Minke-min_optimized.png")
 rastBb <- grid::rasterGrob(imgBb, interpolate = T)
 
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
@@ -266,9 +266,10 @@ ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
             color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
   geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"), 
             color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
-  annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.6, ymax = 4.3) + 
-  annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.25, ymax = 3.75) +
-  annotation_custom(rastBb, xmin = 3.6, xmax = 3.85, ymin = 2.5, ymax = 3) +
+ # annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.55, ymax = 4.3) +
+ # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.25, ymax = 3.75) +
+ # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
+  ylim(1.8,5.25) +
   labs(x = "log[Body mass (kg)]", y ="log[Daily ration (kg)]", color = "Reference(s)") +
   theme_bw() +
   theme(legend.key.height=unit(1, "cm"))
