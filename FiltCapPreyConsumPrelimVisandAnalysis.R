@@ -19,6 +19,17 @@ SE = function(x){sd(x)/sqrt(sum(!is.na(x)))}
 ##########################################
 # load, clean, combine and summarize data
 ##########################################
+# get Alex Boersma's illustrations for figures
+imgBw <- png::readPNG("./Blue.png")
+rastBw <- grid::rasterGrob(imgBw, interpolate = T)
+imgBp <- png::readPNG("./Fin.png")
+rastBp <- grid::rasterGrob(imgBp, interpolate = T)
+imgBe <- png::readPNG("./Bryde's.png")
+rastBe <- grid::rasterGrob(imgBe, interpolate = T)
+imgMn <- png::readPNG("./Humpback.png")
+rastMn <- grid::rasterGrob(imgMn, interpolate = T)
+imgBb <- png::readPNG("./Minke.png")
+rastBb <- grid::rasterGrob(imgBb, interpolate = T)
 
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
 
@@ -243,17 +254,24 @@ prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
   mutate(R = `Intercept (A)`*M_kg^`Exponent (B)`)
 
 # plot predictions from literature, with ours
-RefLines <- c("Trites et al. 1997" = "solid", 
-              "Innes et al. 1986; Armstrong and Siegfried 1991; Tamura and Ohsumi 2000, method 3" = "solid",
-              "Tamura and Ohsumi 2000, method 1" = "solid",
-              "Reilly et al. 2004" = "solid",
-              "Innes et al. 1987"  = "solid",
-              "Nagy 2001" = "solid",
-              "Savoca et al., this study" = "dashed")
-ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R), color = `Reference(s)`)) +
-  geom_line(size = 1.15) +
-  scale_linetype_manual(values=c(1,5,1,1,1,1,1,2)) +  #trying to highlight our line, not working
-  theme_bw()
+
+ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
+  geom_line(data = filter(prey_predict_w_M, !`Reference(s)` %in%  c("Savoca et al., this study (lower bound)", 
+                                                                    "Savoca et al., this study (upper bound)",
+                                                                    "Savoca et al., this study (best estimate)")), 
+            aes(color = str_wrap(`Reference(s)`, 20)), size = 1.15) +
+  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (best estimate)"), 
+            color = str_wrap("dodgerblue4", 20), size = 1.15, linetype = "dashed") +
+  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (lower bound)"), 
+            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"), 
+            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+  annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.6, ymax = 4.3) + 
+  annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.25, ymax = 3.75) +
+  annotation_custom(rastBb, xmin = 3.6, xmax = 3.85, ymin = 2.5, ymax = 3) +
+  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (kg)]", color = "Reference(s)") +
+  theme_bw() +
+  theme(legend.key.height=unit(1, "cm"))
 ingest_predict_plot
 
 
