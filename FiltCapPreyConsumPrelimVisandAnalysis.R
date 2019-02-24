@@ -16,8 +16,9 @@ library(lmerTest)
 # formula for standard error
 SE = function(x){sd(x)/sqrt(sum(!is.na(x)))}
 
-# read in data
-prey_predict <- read_excel("PreyIngestPredict.xlsx") %>% View
+##########################################
+# load, clean, combine and summarize data
+##########################################
 
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
 
@@ -176,6 +177,10 @@ scenario_data <- cetacean_data %>%
             mean_prey_wt_d_t = mean(prey_wt_d_t)) 
 
 
+###########################################
+# preliminary plots for prey consumption
+###########################################
+
 # run for plot of hours, up to one day
 resolution <- 100
 # Calculate feeding over time (for plotting)
@@ -229,9 +234,27 @@ PreyConsumptionbyMonth <- ggplot(plot_data,
 #Save pdf of plot
 dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
 
-##########################
-# Prelim stats exploration
-##########################
+
+# read in data
+prey_predict <- read_excel("PreyIngestPredict.xlsx") %>% mutate(dummy = 1)
+prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
+  full_join(prey_predict, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(R = `Intercept (A)`*M_kg^`Exponent (B)`)
+
+# plot predictions from literature, with ours
+RefLines <- c("Trites et al. 1997" = "solid", 
+              "Innes et al. 1986; Armstrong and Siegfried 1991; Tamura and Ohsumi 2000, method 3" = "solid",
+              "Tamura and Ohsumi 2000, method 1" = "solid",
+              "Reilly et al. 2004" = "solid",
+              "Innes et al. 1987"  = "solid",
+              "Nagy 2001" = "solid",
+              "Savoca et al., this study" = "dashed")
+ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R), color = `Reference(s)`)) +
+  geom_line(size = 1.15) +
+  scale_linetype_manual(values=c(1,5,1,1,1,1,1,2)) +  #trying to highlight our line, not working
+  theme_bw()
+ingest_predict_plot
 
 
 
@@ -278,6 +301,13 @@ g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = E
   # coord_flip() +
   theme_bw() +
   raincloud_theme
+
+
+##########################
+# Prelim stats exploration
+##########################
+
+
 
 
 ###############################################
