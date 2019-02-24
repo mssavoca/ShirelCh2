@@ -17,6 +17,8 @@ library(lmerTest)
 SE = function(x){sd(x)/sqrt(sum(!is.na(x)))}
 
 # read in data
+prey_predict <- read_excel("PreyIngestPredict.xlsx") %>% View
+
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
 
 tag_guide <- read_excel("TAG GUIDE_2.18.19.xlsx")
