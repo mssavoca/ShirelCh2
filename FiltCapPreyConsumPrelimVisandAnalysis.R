@@ -2,6 +2,10 @@
 ## Analyses and visualizations for Filtration capacity and prey consumption paper
 #################################################################################
 
+#############################
+# Load functions and packages
+#############################
+
 library(ggplot2)
 library(dplyr)
 library(data.table)
@@ -16,10 +20,9 @@ library(lmerTest)
 # formula for standard error
 SE = function(x){sd(x)/sqrt(sum(!is.na(x)))}
 
-##########################################
-# load, clean, combine and summarize data
-##########################################
+##############################################
 # get Alex Boersma's illustrations for figures
+##############################################
 imgBw <- png::readPNG("./Blue-min.png")
 rastBw <- grid::rasterGrob(imgBw, interpolate = T)
 imgBp <- png::readPNG("./Fin-min.png")
@@ -30,6 +33,12 @@ imgMn <- png::readPNG("./Humpback-min_optimized.png")
 rastMn <- grid::rasterGrob(imgMn, interpolate = T)
 imgBb <- png::readPNG("./Minke-min_optimized.png")
 rastBb <- grid::rasterGrob(imgBb, interpolate = T)
+
+
+##########################################
+# load, clean, combine and summarize data
+##########################################
+
 
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
 
@@ -260,21 +269,25 @@ ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
                                                                     "Savoca et al., this study (upper bound)",
                                                                     "Savoca et al., this study (best estimate)")), 
             aes(color = str_wrap(`Reference(s)`, 20)), size = 1.15) +
-  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (best estimate)"), 
-            color = str_wrap("dodgerblue4", 20), size = 1.15, linetype = "dashed") +
-  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (lower bound)"), 
-            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
-  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"), 
-            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
- # annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.55, ymax = 4.3) +
- # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.25, ymax = 3.75) +
- # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
+  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (best estimate)"), 
+  #           color = str_wrap("dodgerblue4", 20), size = 1.15, linetype = "dashed") +
+  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (lower bound)"), 
+  #           color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"), 
+  #           color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+ annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.5, ymax = 4.3) +
+ annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.15, ymax = 3.7) +
+ annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
   ylim(1.9,5.25) +
   labs(x = "log[Body mass (kg)]", y ="log[Daily ration (kg)]", color = "Reference(s)") +
   theme_bw() +
-  theme(legend.key.height=unit(1, "cm"))
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=18,face="bold"),
+        legend.text=element_text(size=12),
+        legend.key.height = unit(1, "cm")) 
 ingest_predict_plot
-
+#Save pdf of plot
+dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
 
 ###########################################
@@ -322,16 +335,11 @@ g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = E
   raincloud_theme
 
 
-##########################
-# Prelim stats exploration
-##########################
 
 
-
-
-###############################################
-# for funsies, some back of the envelope calcs:
-###############################################
+#################################################################################
+# for funsies, some back of the envelope calcs on filtraton capacity comparisons:
+#################################################################################
 
 # volume of water in upper 300m of Monterey Bay
 ((pi*20000^2*300)/2)*1000 # this equals 1.884956e+14 (9.42478e+13 for half cylinder), a blue whale filters ~1000000 per hour, or 24000000 per day
@@ -345,3 +353,11 @@ g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = E
 350000*12000000 # approximate amount of water filtered per day by pre-exploitation population of Southern Ocean blue whales 
 750000*12000000 # approximate amount of water filtered per day by pre-exploitation population of Southern Ocean fin whales 
 ((4.2e+12 + 9e+12)*120/7.18e+18)*100 # Percentage of the upper 327m of the Southern Ocean that the pre-exploitation population of blue and fin whales 
+
+
+
+
+##########################
+# Prelim stats exploration
+##########################
+
