@@ -269,7 +269,7 @@ ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
  # annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.55, ymax = 4.3) +
  # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.25, ymax = 3.75) +
  # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
-  ylim(1.8,5.25) +
+  ylim(1.9,5.25) +
   labs(x = "log[Body mass (kg)]", y ="log[Daily ration (kg)]", color = "Reference(s)") +
   theme_bw() +
   theme(legend.key.height=unit(1, "cm"))
