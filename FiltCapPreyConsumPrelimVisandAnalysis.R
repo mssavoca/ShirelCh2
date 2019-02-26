@@ -39,6 +39,42 @@ rastBb <- grid::rasterGrob(imgBb, interpolate = T)
 # load, clean, combine and summarize data
 ##########################################
 
+# read in data for direct predictions of daily ration (R) from literature
+prey_predict <- read_excel("PreyIngestPredict.xlsx") %>% mutate(dummy = 1)
+prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
+  full_join(prey_predict, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(R = `Intercept (A)`*M_kg^`Exponent (B)`,
+         R_compressed_90days = (R*365)/90,
+         R_compressed_120days = (R*365)/120)
+
+
+# read in data for predictions from BMR-->FMR of daily ration (R) from literature
+#formulas: 
+# estimate of BMR extrapolated from Kleiber 1975: BMR = 293.1*(M^0.75)
+# estimate of ADMR ~ FMR from Lavigne, Leaper and Lavigne 2007, Barlow et al. 2008: beta*BMR, 
+  # where beat is a value between 2-5 (see Barlow et al. 2008 p.287 for more)
+# estimate of R 
+
+prey_predict_from_BMR <- read_excel("PreyIngestPredict.xlsx", sheet = 2) %>% 
+  mutate(KleiberBMR = 293.1*M_kg^0.75,
+         dummy = 1)
+BMRtoFMRprojection <- tibble(beta = seq(2,5,0.5), dummy = 1) %>% 
+  full_join(prey_predict_from_BMR, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(ADMR = beta*KleiberBMR,
+         R  = ADMR/(0.8*((3900*Z)+5400*(1-Z))),
+         R_compressed_90days = (R*365)/90,
+         R_compressed_120days = (R*365)/120)
+
+BMRtoFMRprojection$R  = BMRtoFMRprojection$ADMR/(0.8*((3900*BMRtoFMRprojection$Z)+5400*(1-BMRtoFMRprojection$Z)))
+         mutate(R = ADMR/(0.8(3900*Z+5400*(1-Z))))
+
+prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
+  full_join(prey_predict, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(R = `Intercept (A)`*M_kg^`Exponent (B)`)
+
 
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
 
@@ -255,12 +291,7 @@ PreyConsumptionbyMonth <- ggplot(plot_data,
 dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
 
 
-# read in data
-prey_predict <- read_excel("PreyIngestPredict.xlsx") %>% mutate(dummy = 1)
-prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
-  full_join(prey_predict, by = "dummy") %>% 
-  select(-"dummy") %>% 
-  mutate(R = `Intercept (A)`*M_kg^`Exponent (B)`)
+
 
 # plot predictions from literature, with ours
 
@@ -289,6 +320,29 @@ ingest_predict_plot
 #Save pdf of plot
 dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
+
+# krill diet percentages (from Pauly et al. 1998)
+# Z-values (proportion krill in diet)
+bw = 1
+bp = 0.8
+bb - 0.9
+ba = 0.65
+bbor = 0.8
+be = 0.4
+mn = 0.55
+
+# average weight (in kg) from Jerem'y data or Lockyer 1976
+bw = 93000
+bp = 53000
+bb/ba = 6700
+bbor = mean(c(15,18.5, 15.5,17, 17,18.5)*1000)  # From Wiki, from Lockyer 1976
+  
+  # mean(c(8.53, 10.25, 11.38, 11.28, 16.08, 15.56, 8.58, 13.32, 9.90, 10.61, 13.80, 15.76, 12.94, 
+  #             8.89, 16.36, 12.34, 12.22, 21.62)*1000)
+
+be = mean(c(11.98,11.77,13.87,13.46,11.75,13.76,11.49,11.64,11.93,13.61,8.39,13.91,15.43,14.12,13.78,
+            13.91,12.55, 12.46, 11.89, 12.79, 11.32, 9.99, 16.15, 15.96, 14.85, 12.78,15.47)*1000) 
+mn = 36000
 
 ###########################################
 # preliminary plots for filtration capacity
