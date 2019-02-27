@@ -51,10 +51,37 @@ prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
 
 # read in data for predictions from BMR-->FMR of daily ration (R) from literature
 #formulas: 
-# estimate of BMR extrapolated from Kleiber 1975: BMR = 293.1*(M^0.75)
-# estimate of ADMR ~ FMR from Lavigne, Leaper and Lavigne 2007, Barlow et al. 2008: beta*BMR, 
-  # where beat is a value between 2-5 (see Barlow et al. 2008 p.287 for more)
-# estimate of R 
+
+# krill diet percentages (from Pauly et al. 1998)
+# Z-values (proportion krill in diet)
+# bw = 1
+# bp = 0.8
+# bb - 0.9
+# ba = 0.65
+# bbor = 0.8
+# be = 0.4
+# mn = 0.55
+
+# average weight (in kg) from Jeremy's data or Lockyer 1976
+# bw = 93000
+# bp = 53000
+# bb/ba = 6700
+# bbor = mean(c(15,18.5, 15.5,17, 17,18.5)*1000)  # From Wiki, from Lockyer 1976
+# OR  mean(c(8.53, 10.25, 11.38, 11.28, 16.08, 15.56, 8.58, 13.32, 9.90, 10.61, 13.80, 15.76, 12.94, 
+# #             8.89, 16.36, 12.34, 12.22, 21.62)*1000)
+# be = mean(c(11.98,11.77,13.87,13.46,11.75,13.76,11.49,11.64,11.93,13.61,8.39,13.91,15.43,14.12,13.78,
+#             13.91,12.55, 12.46, 11.89, 12.79, 11.32, 9.99, 16.15, 15.96, 14.85, 12.78,15.47)*1000) 
+# mn = 36000
+
+
+# estimate of BMR extrapolated from Kleiber 1975: 
+  # BMR = 293.1*(M^0.75)
+# estimate of ADMR ~ FMR from Lavigne, Leaper and Lavigne 2007, Barlow et al. 2008: 
+    # ADMR = beta*BMR, where beat is a value between 2-5 (see Barlow et al. 2008 p.287 for more)
+# estimate of R from Leaper and Lavigne 2007, Barlow et al. 2008:
+  # R = ADMR/(0.8*[3900*Z + 5450*(1-Z)])
+# to compute prey intake per day when feeding if ALL feeding is compresseded into 120 days
+  # (R*365)/120
 
 prey_predict_from_BMR <- read_excel("PreyIngestPredict.xlsx", sheet = 2) %>% 
   mutate(KleiberBMR = 293.1*M_kg^0.75,
@@ -67,13 +94,7 @@ BMRtoFMRprojection <- tibble(beta = seq(2,5,0.5), dummy = 1) %>%
          R_compressed_90days = (R*365)/90,
          R_compressed_120days = (R*365)/120)
 
-BMRtoFMRprojection$R  = BMRtoFMRprojection$ADMR/(0.8*((3900*BMRtoFMRprojection$Z)+5400*(1-BMRtoFMRprojection$Z)))
-         mutate(R = ADMR/(0.8(3900*Z+5400*(1-Z))))
 
-prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
-  full_join(prey_predict, by = "dummy") %>% 
-  select(-"dummy") %>% 
-  mutate(R = `Intercept (A)`*M_kg^`Exponent (B)`)
 
 
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
@@ -295,54 +316,34 @@ dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
 
 # plot predictions from literature, with ours
 
-ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
+ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R_compressed_120days))) +
   geom_line(data = filter(prey_predict_w_M, !`Reference(s)` %in%  c("Savoca et al., this study (lower bound)", 
                                                                     "Savoca et al., this study (upper bound)",
                                                                     "Savoca et al., this study (best estimate)")), 
             aes(color = str_wrap(`Reference(s)`, 20)), size = 1.15) +
-  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (best estimate)"), 
-  #           color = str_wrap("dodgerblue4", 20), size = 1.15, linetype = "dashed") +
-  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (lower bound)"), 
-  #           color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
-  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"), 
-  #           color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
- annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.5, ymax = 4.3) +
- annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.15, ymax = 3.7) +
- annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
+  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (best estimate)"),
+            color = str_wrap("dodgerblue4", 20), size = 1.15, linetype = "dashed") +
+  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (lower bound)"),
+            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"),
+            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+ # annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.5, ymax = 4.3) +
+ # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.15, ymax = 3.7) +
+ # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
   ylim(1.9,5.25) +
-  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (kg)]", color = "Reference(s)") +
+  labs(x = "log[Body mass (kg)]", y ="log[Compressed daily ration (kg)]", color = "Reference(s)") +
   theme_bw() +
   theme(axis.text=element_text(size=14),
         axis.title=element_text(size=18,face="bold"),
         legend.text=element_text(size=12),
         legend.key.height = unit(1, "cm")) 
 ingest_predict_plot
+
 #Save pdf of plot
 dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
 
-# krill diet percentages (from Pauly et al. 1998)
-# Z-values (proportion krill in diet)
-bw = 1
-bp = 0.8
-bb - 0.9
-ba = 0.65
-bbor = 0.8
-be = 0.4
-mn = 0.55
 
-# average weight (in kg) from Jerem'y data or Lockyer 1976
-bw = 93000
-bp = 53000
-bb/ba = 6700
-bbor = mean(c(15,18.5, 15.5,17, 17,18.5)*1000)  # From Wiki, from Lockyer 1976
-  
-  # mean(c(8.53, 10.25, 11.38, 11.28, 16.08, 15.56, 8.58, 13.32, 9.90, 10.61, 13.80, 15.76, 12.94, 
-  #             8.89, 16.36, 12.34, 12.22, 21.62)*1000)
-
-be = mean(c(11.98,11.77,13.87,13.46,11.75,13.76,11.49,11.64,11.93,13.61,8.39,13.91,15.43,14.12,13.78,
-            13.91,12.55, 12.46, 11.89, 12.79, 11.32, 9.99, 16.15, 15.96, 14.85, 12.78,15.47)*1000) 
-mn = 36000
 
 ###########################################
 # preliminary plots for filtration capacity
