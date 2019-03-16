@@ -189,13 +189,14 @@ fv_data <- f_data %>%
   select(-c(Med_L, Mean_L))
 
 # looking at differences in feeding rates for tags on a full day or less than a day
-full_day = fv_data %>% filter(Species == "bw" & TotalHours > 23) 
-hist(full_day$LungesPerHour)
-median(full_day$LungesPerHour)
-
-part_day = fv_data %>% filter(Species == "bw" & TotalHours < 15) 
-hist(part_day$LungesPerHour)
-median(part_day$LungesPerHour)
+# full_day = fv_data %>% filter(Species == "bw" & TotalHours > 23) 
+# hist(full_day$LungesPerHour)
+# median(full_day$LungesPerHour)
+# fv_data %>% group_by(CommonName) %>% filter(TotalHours > 24 & TotalLunges > 0) %>% summarize(n_distinct(ID), mean(LungesPerHour)) %>% View
+# 
+# part_day = fv_data %>% filter(Species == "bw" & TotalHours < 15) 
+# hist(part_day$LungesPerHour)
+# median(part_day$LungesPerHour)
 
 # load data
 d_full_NULL <- read_csv("Cetacea model output NULL_EXTANT.csv") %>% 
@@ -239,6 +240,21 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = "ID") %>%
   drop_na(Species) %>% 
   mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h)          # FEEDING RATE
 
+# # View how many tags in this dataset have been on for >24 hours 
+# cetacean_data %>% group_by(Species) %>% filter(taxa == "M" & TotalTagTime_h >24) %>% summarize(n_distinct(ID), mean(feeding_rate)) %>% View
+
+# combine two dataframes into one monster dataframe
+vol_master_data <- cetacean_data %>% filter(species %in% c("bw", "bp", "mn", "ba")) %>% 
+  select(species, ID, Body_length_m, TotalTagTime_h, feeding_rate, as.numeric(total_lunges), sonar_exp) %>% #not working
+  full_join(fv_data, by = "ID") %>% 
+  mutate(LungesPerHour = coalesce(feeding_rate, LungesPerHour),
+         TotalTagTime_h = coalesce(TotalTagTime_h, TotalHours),
+         TotalLunges = coalesce(TotalLunges, total_lunges), 
+         SpeciesCode = substr(ID,1,2)) %>% 
+  select(-c(Index, TotalHours, feeding_rate, species, TagOn, TagOff, Species, `Prey notes`))
+
+
+
 # Gather scenarios, view output
 scenario_data <- cetacean_data %>% 
   filter(TotalTagTime_h > 23, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%   #  & sonar_exp %in% c("none", NA) # possibly includ sonar exp, but it takes away several blues and one fin whale
@@ -252,6 +268,74 @@ scenario_data <- cetacean_data %>%
   group_by(Species, scenario, scenario_type, calc_type) %>% 
   summarize(mean_hourly_prey_in_g = mean(hourly_prey_in_g),
             mean_prey_wt_d_t = mean(prey_wt_d_t)) 
+
+
+
+###########################################
+# preliminary plots for filtration capacity
+###########################################
+
+pal <- c("Minke Whale" = "firebrick3", "Bryde's Whale" = "darkorchid3",  "Humpback Whale" = "gray30", "Fin Whale" = "chocolate3", "Blue Whale" = "dodgerblue2" )
+Shape <- c("Minke Whale" = 15, "Bryde's Whale" = 8,  "Humpback Whale" = 17, "Fin Whale" = 18, "Blue Whale" = 19 )
+
+EmpEngulfCapPLot <- ggplot(fv_data, aes(Length, EmpEngulfCap)) +
+  geom_point(inherit.aes = T, aes(shape = CommonName, color = CommonName), size = 2) + 
+  labs(col="Common name", shape = "Common name") +
+  geom_smooth(method = lm) +
+  xlab("Length (m)") + ylab("Engulfment capacity (L)") +
+  ggtitle("Engulfment capacity by length for whales measured by drone") +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape)+
+  theme_bw()
+EmpEngulfCapPLot 
+
+EmpEngulfCapMod <- lmer(EmpEngulfCap ~ Length + (1|Species), data = fv_data)
+summary(EmpEngulfCapMod)
+
+fv_data$Species <- fct_relevel(fv_data$Species, "be","bb","mn","bp","bw")
+
+
+v_24_deploy <- ggplot(filter(fv_data, TotalHours > 24 & Prey == "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerHr*24, color = CommonName)) + 
+  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0) +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape) +
+  ylab("Filtration capacity (liters per day)") + ggtitle("Water volume filtered per day (krill feeding whales)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"))
+v_24_deploy + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
+  theme(legend.position="none")
+  
+
+v1 <- ggplot(filter(fv_data, TotalHours > 2 & Prey == "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerDayHr, color = CommonName)) + 
+  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
+  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0) +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values=Shape) +
+  ylab("Filtration capacity (liters per hour)") + ggtitle("Water volume filtered per hour (krill-feeding whales)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+      axis.title=element_text(size=13, face="bold"),
+      plot.title = element_text(hjust = 0.5, size = 14, face="bold"))
+v1 + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
+  theme(legend.position="none")
+
+
+g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = EmotionCondition)) +
+  geom_flat_violin(position = position_nudge(x = .2, y = 0), alpha = .8) +
+  geom_point(aes(y = Sensitivity, color = EmotionCondition), position = position_jitter(width = .15), size = .5, alpha = 0.8) +
+  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  expand_limits(x = 5.25) +
+  guides(fill = FALSE) +
+  guides(color = FALSE) +
+  scale_color_brewer(palette = "Spectral") +
+  scale_fill_brewer(palette = "Spectral") +
+  # coord_flip() +
+  theme_bw() +
+  raincloud_theme
+
 
 
 ###########################################
@@ -316,7 +400,7 @@ dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
 
 # plot predictions from literature, with ours
 
-ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R_compressed_120days))) +
+ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R_compressed_90days))) +
   geom_line(data = filter(prey_predict_w_M, !`Reference(s)` %in%  c("Savoca et al., this study (lower bound)", 
                                                                     "Savoca et al., this study (upper bound)",
                                                                     "Savoca et al., this study (best estimate)")), 
@@ -330,7 +414,7 @@ ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R_compres
  # annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.5, ymax = 4.3) +
  # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.15, ymax = 3.7) +
  # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
-  ylim(1.9,5.25) +
+  ylim(1.9,6) +
   labs(x = "log[Body mass (kg)]", y ="log[Compressed daily ration (kg)]", color = "Reference(s)") +
   theme_bw() +
   theme(axis.text=element_text(size=14),
@@ -344,50 +428,6 @@ dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
 
 
-
-###########################################
-# preliminary plots for filtration capacity
-###########################################
-
-pal <- c("Minke Whale" = "firebrick3", "Bryde's Whale" = "darkorchid3",  "Humpback Whale" = "gray30", "Fin Whale" = "chocolate3", "Blue Whale" = "dodgerblue2" )
-Shape <- c("Minke Whale" = 15, "Bryde's Whale" = 8,  "Humpback Whale" = 17, "Fin Whale" = 18, "Blue Whale" = 19 )
-
-EmpEngulfCapPLot <- ggplot(fv_data, aes(Length, EmpEngulfCap)) +
-  geom_point(inherit.aes = T, aes(shape = CommonName, color = CommonName), size = 2) + 
-  labs(col="Common name", shape = "Common name") +
-  geom_smooth(method = lm) +
-  xlab("Length (m)") + ylab("Engulfment capacity (L)") +
-  ggtitle("Engulfment capacity by length for whales measured by drone") +
-  scale_colour_manual(values = pal) +
-  scale_shape_manual(values=Shape)+
-  theme_bw()
-EmpEngulfCapPLot 
-
-fv_data$Species <- fct_relevel(fv_data$Species, "be","bb","mn","bp","bw")
-
-v1 <- ggplot(filter(fv_data, TotalHours > 2 & Prey == "Krill" & TotalLunges > 0), aes(x = Species, y = EngulfVolPerDayHr, color = CommonName)) + 
-  geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
-  geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
-  scale_colour_manual(values = pal) +
-  scale_shape_manual(values=Shape) +
-  ylab("Filtration capacity (liters d-1 h)") + ggtitle("Water volume filtered per hour (fish feeding whales)") +
-  theme_bw()
-v1 + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
-  theme(legend.position="none")
-
-
-g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = EmotionCondition)) +
-  geom_flat_violin(position = position_nudge(x = .2, y = 0), alpha = .8) +
-  geom_point(aes(y = Sensitivity, color = EmotionCondition), position = position_jitter(width = .15), size = .5, alpha = 0.8) +
-  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
-  expand_limits(x = 5.25) +
-  guides(fill = FALSE) +
-  guides(color = FALSE) +
-  scale_color_brewer(palette = "Spectral") +
-  scale_fill_brewer(palette = "Spectral") +
-  # coord_flip() +
-  theme_bw() +
-  raincloud_theme
 
 
 
