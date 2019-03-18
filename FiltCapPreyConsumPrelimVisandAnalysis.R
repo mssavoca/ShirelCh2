@@ -15,6 +15,7 @@ library(tidyverse)
 library(mgcv)
 library(lme4)
 library(lmerTest)
+library(ggpubr)
 
 
 # formula for standard error
@@ -242,6 +243,21 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = "ID") %>%
 
 
 
+
+# Gather scenarios, view output
+scenario_data <- cetacean_data %>% 
+  filter(TotalTagTime_h > 24, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%   #  & sonar_exp %in% c("none", NA) # possibly includ sonar exp, but it takes away several blues and one fin whale
+  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E) %>%
+  gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
+  #  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
+  mutate(hourly_prey_in_g = prey_wgt_g * feeding_rate,
+         scenario_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "medNULL_wt_g"), "NULL", "BOUT"),
+         calc_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "wgtMeanBOUT_wt_g"), "mean", "med")) %>% 
+  mutate(prey_wt_d_t = (hourly_prey_in_g*6)/1000/1000) %>% 
+  group_by(Species, scenario, scenario_type, calc_type) %>% 
+  summarize(mean_hourly_prey_in_g = mean(hourly_prey_in_g),
+            mean_prey_wt_d_t = mean(prey_wt_d_t)) 
+
 # combine two dataframes into one monster dataframe
 cetacean_data$total_lunges <- as.double(cetacean_data$total_lunges) # need to do this conversion for coalesce to work below
 
@@ -277,19 +293,7 @@ vol_master_data %>% group_by(SpeciesCode) %>%
             seVFD = SE()) %>% View
 
 
-# Gather scenarios, view output
-scenario_data <- cetacean_data %>% 
-  filter(TotalTagTime_h > 23, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%   #  & sonar_exp %in% c("none", NA) # possibly includ sonar exp, but it takes away several blues and one fin whale
-  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E) %>%
-  gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
-#  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
-     mutate(hourly_prey_in_g = prey_wgt_g * feeding_rate,
-         scenario_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "medNULL_wt_g"), "NULL", "BOUT"),
-         calc_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "wgtMeanBOUT_wt_g"), "mean", "med")) %>% 
-  mutate(prey_wt_d_t = (hourly_prey_in_g*6)/1000/1000) %>% 
-  group_by(Species, scenario, scenario_type, calc_type) %>% 
-  summarize(mean_hourly_prey_in_g = mean(hourly_prey_in_g),
-            mean_prey_wt_d_t = mean(prey_wt_d_t)) 
+
 
 
 
@@ -342,7 +346,7 @@ v_24_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 24 & TotalLunges 
   facet_grid(.~PreyClean, scales = "free_x") +
   scale_colour_manual(values = pal) +
   scale_shape_manual(values = Shape) +
-  xlab("Species") + ylab("Filtration capacity (liters per day)") + 
+  xlab("Species") + ylab("VFD (liters per day)") + 
   ggtitle("Water volume filtered per day (tags on >24 hours)") +
   theme_bw() +
   theme(axis.text=element_text(size=12),
@@ -353,27 +357,116 @@ v_24_deploy + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "Antarct
   theme(legend.position="none")
   
 
+# now for varying hours feeding within a day
 
+vol_master_for_join <- vol_master_data %>% 
+  mutate(dummy = 1)
+vol_master_varying_HrperD <- tibble(hours_feeding = seq(1,12,1), dummy = 1) %>% 
+  full_join(vol_master_for_join, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(TotalWaterFiltered = hours_feeding*EngulfVolPerHr)
 
+SpCodetoName <- c("ba" = "B. acutorostrata", 
+                  "bb" = "B. bonaerensis", 
+                  "be" = "B. edeni", 
+                  "bw" = "B. musculus", 
+                  "bp" = "B. physalus", 
+                  "mn" = "M. novaeangliae")
 
-g <- ggplot(data = my_datal, aes(y = Sensitivity, x = EmotionCondition, fill = EmotionCondition)) +
-  geom_flat_violin(position = position_nudge(x = .2, y = 0), alpha = .8) +
-  geom_point(aes(y = Sensitivity, color = EmotionCondition), position = position_jitter(width = .15), size = .5, alpha = 0.8) +
-  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
-  expand_limits(x = 5.25) +
-  guides(fill = FALSE) +
-  guides(color = FALSE) +
-  scale_color_brewer(palette = "Spectral") +
-  scale_fill_brewer(palette = "Spectral") +
-  # coord_flip() +
+v_HrperDfish <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Fish-feeding"),
+                       aes(x = hours_feeding, y = TotalWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) + 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.25) + 
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_x_continuous(breaks=seq(0, 12, 3)) +
+  xlab("Hours feeding") + ylab("Total water filtered (liters)") + 
   theme_bw() +
-  raincloud_theme
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_HrperD + theme(legend.position="none")
+ 
+
+v_HrperDkrill <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
+                       aes(x = hours_feeding, y = TotalWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) + 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.25) + 
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_x_continuous(breaks=seq(0, 12, 3)) +
+  xlab("Hours feeding") + ylab("Total water filtered (liters)") + 
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_HrperD + theme(legend.position="none")
 
 
+ggarrange(v_HrperDfish, v_HrperDkrill, 
+          labels = c("A", "B"), # THIS IS SO COOL!!
+          legend = "none",
+          ncol = 1, nrow = 2)
 
 ###########################################
 # preliminary plots for prey consumption
 ###########################################
+# plot predictions from literature, with ours
+pal <- c("Balaenoptera acutorostrata" = "gold3", "Balaenoptera bonaerensis" = "firebrick3", "Balaenoptera edeni" = "darkorchid3", "Balaenoptera borealis" = "black",  "Megaptera novaeangliae" = "gray30", "Balaenoptera physalus" = "chocolate3", "Balaenoptera musculus" = "dodgerblue2" )
+Shape <- c("Balaenoptera acutorostrata" = 10, "Balaenoptera bonaerensis" = 15, "Balaenoptera edeni" = 8, "Balaenoptera borealis" = 7, "Megaptera novaeangliae" = 17, "Balaenoptera physalus" = 18, "Balaenoptera musculus" = 19)
+
+ingest_MSpredict_plot <- ggplot(BMRtoFMRprojection, aes(log10(M_kg), log10(R), color = Species, shape = Species)) +
+  geom_point() + 
+  #geom_smooth() +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  #ylim(2.5,4.5) +
+  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (R) in kg]") +
+  theme_bw() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
+ingest_MSpredict_plot
+
+
+ingest_directpredict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
+  geom_line(data = filter(prey_predict_w_M, !`Reference(s)` %in%  c("Savoca et al., this study (lower bound)", 
+                                                                    "Savoca et al., this study (upper bound)",
+                                                                    "Savoca et al., this study (best estimate)")), 
+            aes(color = str_wrap(`Reference(s)`, 20)), size = 1.15) +
+  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (best estimate)"),
+  #           color = str_wrap("dodgerblue4", 20), size = 1.15, linetype = "dashed") +
+  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (lower bound)"),
+  #           color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+  # geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"),
+  #           color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
+  # annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.5, ymax = 4.3) +
+  # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.15, ymax = 3.7) +
+  # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
+  #ylim(2.5,4.5) +
+  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (R) in kg]", color = "Reference(s)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"),
+        legend.text=element_text(size=12),
+        legend.title=element_text(size=12),
+        legend.key.height = unit(1, "cm")) 
+ingest_directpredict_plot
+
+#Save pdf of plot
+dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
+
+# plot for known 
+
 
 # run for plot of hours, up to one day
 resolution <- 100
@@ -427,42 +520,6 @@ PreyConsumptionbyMonth <- ggplot(plot_data,
             data = filter(plot_data, t == max(t)))
 #Save pdf of plot
 dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
-
-
-
-
-# plot predictions from literature, with ours
-
-ingest_predict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R_compressed_90days))) +
-  geom_line(data = filter(prey_predict_w_M, !`Reference(s)` %in%  c("Savoca et al., this study (lower bound)", 
-                                                                    "Savoca et al., this study (upper bound)",
-                                                                    "Savoca et al., this study (best estimate)")), 
-            aes(color = str_wrap(`Reference(s)`, 20)), size = 1.15) +
-  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (best estimate)"),
-            color = str_wrap("dodgerblue4", 20), size = 1.15, linetype = "dashed") +
-  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (lower bound)"),
-            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
-  geom_line(data = filter(prey_predict_w_M, `Reference(s)` == "Savoca et al., this study (upper bound)"),
-            color = str_wrap("dodgerblue2", 20), size = 1.15, linetype = "dotted") +
- # annotation_custom(rastBw, xmin = 4.5, xmax = 5.2, ymin = 3.5, ymax = 4.3) +
- # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.15, ymax = 3.7) +
- # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
-  ylim(1.9,6) +
-  labs(x = "log[Body mass (kg)]", y ="log[Compressed daily ration (kg)]", color = "Reference(s)") +
-  theme_bw() +
-  theme(axis.text=element_text(size=14),
-        axis.title=element_text(size=18,face="bold"),
-        legend.text=element_text(size=12),
-        legend.key.height = unit(1, "cm")) 
-ingest_predict_plot
-
-#Save pdf of plot
-dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
-
-
-
-
-
 
 
 #################################################################################
