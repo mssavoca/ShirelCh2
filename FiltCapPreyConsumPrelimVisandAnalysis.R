@@ -417,7 +417,7 @@ ggarrange(v_HrperDfish, v_HrperDkrill,
 annotate_figure(top = text_grob("Water volume filtered per day (all deployments >2 hours)", face = "bold", size = 14))
 
 
-# annual amount of water filtered per individual
+# annual amount of water filtered per individual per day
 vol_master_for_year_join <- vol_master_varying_HrperD %>% 
   mutate(dummy = 1)
 vol_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1) %>% 
@@ -426,7 +426,7 @@ vol_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1) 
   mutate(TotalAnnualWaterFiltered = days_feeding*TotalWaterFiltered)
  
 
-v_DperYrfish <- ggplot(filter(vol_master_varying_DperYr, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Fish-feeding"),
+v_DperYrfish <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Fish-feeding"),
                        aes(x = days_feeding, y = TotalAnnualWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) +
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
@@ -445,7 +445,7 @@ v_DperYrfish <- ggplot(filter(vol_master_varying_DperYr, TotalTagTime_h > 2 & To
 v_DperYrfish + theme(legend.position="none")
 
 
-v_DperYrkrill <- ggplot(filter(vol_master_varying_DperYr, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
+v_DperYrkrill <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
                        aes(x = days_feeding, y = TotalAnnualWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) +
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
@@ -467,7 +467,7 @@ ggarrange(v_DperYrfish, v_DperYrkrill,
           labels = c("A", "B"), # THIS IS SO COOL!!
           legend = "none",
           ncol = 1, nrow = 2) %>% 
-  annotate_figure(top = text_grob("Water volume filtered per year (all deployments >2 hours)", face = "bold", size = 14))
+annotate_figure(top = text_grob("Water volume filtered per year (all deployments >2 hours)", face = "bold", size = 14))
 
 
 
