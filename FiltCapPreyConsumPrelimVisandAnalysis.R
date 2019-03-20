@@ -375,7 +375,7 @@ SpCodetoName <- c("ba" = "B. acutorostrata",
 
 v_HrperDfish <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Fish-feeding"),
                        aes(x = hours_feeding, y = TotalWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) + 
-  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.25) + 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.3) + 
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
   facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
   scale_colour_manual(values = pal,
@@ -390,11 +390,10 @@ v_HrperDfish <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & To
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
         strip.text.x = element_text(size = 12))
 v_HrperD + theme(legend.position="none")
- 
 
 v_HrperDkrill <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
                        aes(x = hours_feeding, y = TotalWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) + 
-  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.25) + 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.3) + 
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
   facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
   scale_colour_manual(values = pal,
@@ -414,7 +413,63 @@ v_HrperD + theme(legend.position="none")
 ggarrange(v_HrperDfish, v_HrperDkrill, 
           labels = c("A", "B"), # THIS IS SO COOL!!
           legend = "none",
-          ncol = 1, nrow = 2)
+          ncol = 1, nrow = 2) %>% 
+annotate_figure(top = text_grob("Water volume filtered per day (all deployments >2 hours)", face = "bold", size = 14))
+
+
+# annual amount of water filtered per individual
+vol_master_for_year_join <- vol_master_varying_HrperD %>% 
+  mutate(dummy = 1)
+vol_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1) %>% 
+  full_join(vol_master_for_year_join, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(TotalAnnualWaterFiltered = days_feeding*TotalWaterFiltered)
+ 
+
+v_DperYrfish <- ggplot(filter(vol_master_varying_DperYr, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Fish-feeding"),
+                       aes(x = days_feeding, y = TotalAnnualWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  #scale_x_continuous(breaks=seq(0, 12, 3)) +
+  xlab("Days feeding") + ylab("Total water filtered (liters)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_DperYrfish + theme(legend.position="none")
+
+
+v_DperYrkrill <- ggplot(filter(vol_master_varying_DperYr, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
+                       aes(x = days_feeding, y = TotalAnnualWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  #scale_x_continuous(breaks=seq(0, 12, 3)) +
+  xlab("Days feeding") + ylab("Total water filtered (liters)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_DperYrkrill + theme(legend.position="none")
+
+ggarrange(v_DperYrfish, v_DperYrkrill, 
+          labels = c("A", "B"), # THIS IS SO COOL!!
+          legend = "none",
+          ncol = 1, nrow = 2) %>% 
+  annotate_figure(top = text_grob("Water volume filtered per year (all deployments >2 hours)", face = "bold", size = 14))
+
+
 
 ###########################################
 # preliminary plots for prey consumption
