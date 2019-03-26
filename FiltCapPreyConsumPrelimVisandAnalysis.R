@@ -295,8 +295,6 @@ vol_master_data %>% group_by(SpeciesCode) %>%
 
 
 
-
-
 ###########################################
 # preliminary plots for filtration capacity
 ###########################################
@@ -320,7 +318,6 @@ summary(EmpEngulfCapMod)
 
 vol_master_data$SpeciesCode <- fct_relevel(vol_master_data$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
 
-
 v_all_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none"),
                       aes(x = SpeciesCode, y = EngulfVolPerHr, color = SpeciesCode, shape = SpeciesCode)) + 
   geom_point(inherit.aes = T, alpha = 0.8, position = position_jitter(width = .25)) + 
@@ -328,15 +325,17 @@ v_all_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 2 & TotalLunges 
   facet_grid(.~PreyClean, scales = "free_x") +
   scale_colour_manual(values = pal) +
   scale_shape_manual(values = Shape) +
+  scale_y_log10(labels = scales::comma, limits = c(5000, 5000000)) + 
   xlab("Species") + ylab("Filtration capacity (liters per hour)") + 
-  ggtitle("Water volume filtered per hour (all delpoyments >2 hours)") +
+  ggtitle("Water filtered per individual per hour (all delpoyments >2 hours)") +
   theme_bw() +
-  theme(axis.text=element_text(size=12),
+  theme(axis.text.x = element_text(size=12, angle = 45, hjust = 1),
+        axis.text.y = element_text(size=12),
         axis.title=element_text(size=13, face="bold"),
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
         strip.text.x = element_text(size = 12))
-v_all_deploy + scale_x_discrete(labels=c("ba" = "common\nminke\nwhale", "be" = "Bryde's\nwhale", "bb" = "Antarctic\nminke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
-  theme(legend.position="none")
+v_all_deploy + theme(legend.position="none") +
+  scale_x_discrete(labels=c("ba" = "B. acutorostrata", "be" = "B. edeni", "bb" = "B. bonaerensis", "mn" = "M. novaeangliae", "bp" = "B. physalus", "bw" = "B. musculus")) 
 
 
 v_24_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 24 & TotalLunges > 0 & sonar_exp =="none", PreyClean =="Krill-feeding"),
@@ -345,17 +344,19 @@ v_24_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 24 & TotalLunges 
   geom_boxplot(inherit.aes = T, guides = FALSE, outlier.shape = NA, alpha = 0) +
   facet_grid(.~PreyClean, scales = "free_x") +
   scale_colour_manual(values = pal) +
+  scale_y_log10(labels = scales::comma) + 
   scale_shape_manual(values = Shape) +
   xlab("Species") + ylab("VFD (liters per day)") + 
-  ggtitle("Water volume filtered per day (tags on >24 hours)") +
+  ggtitle("Water filtered per individual per day (tags on >24 hours)") +
   theme_bw() +
-  theme(axis.text=element_text(size=12),
+  theme(axis.text.x = element_text(size=12, angle = 45, hjust = 1),
+        axis.text.y = element_text(size=12),       
         axis.title=element_text(size=13, face="bold"),
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
         strip.text.x = element_text(size = 12))
-v_24_deploy + scale_x_discrete(labels=c("be" = "bryde's\nwhale", "bb" = "Antarctic minke\nwhale", "mn" = "humpback\nwhale", "bp" = "fin\nwhale", "bw" ="blue\nwhale")) +
-  theme(legend.position="none")
-  
+v_24_deploy + theme(legend.position="none") +
+  scale_x_discrete(labels=c("ba" = "B. acutorostrata", "be" = "B. edeni", "bb" = "B. bonaerensis", "mn" = "M. novaeangliae", "bp" = "B. physalus", "bw" = "B. musculus")) 
+
 
 # now for varying hours feeding within a day
 
@@ -383,7 +384,9 @@ v_HrperDfish <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & To
   scale_shape_manual(values = Shape,
                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
   scale_x_continuous(breaks=seq(0, 12, 3)) +
+  scale_y_log10(labels = scales::comma) + 
   xlab("Hours feeding") + ylab("Total water filtered (liters)") + 
+  ggtitle("Water filtered per individual per day (all deployments >2 hours)") +
   theme_bw() +
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=13, face="bold"),
@@ -391,6 +394,7 @@ v_HrperDfish <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & To
         strip.text.x = element_text(size = 12))
 v_HrperD + theme(legend.position="none")
 
+vol_master_varying_HrperD$SpeciesCode <- fct_relevel(vol_master_varying_HrperD$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
 v_HrperDkrill <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
                        aes(x = hours_feeding, y = TotalWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) + 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.3) + 
@@ -401,23 +405,22 @@ v_HrperDkrill <- ggplot(filter(vol_master_varying_HrperD, TotalTagTime_h > 2 & T
   scale_shape_manual(values = Shape,
                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
   scale_x_continuous(breaks=seq(0, 12, 3)) +
+  scale_y_log10(labels = scales::comma) + 
   xlab("Hours feeding") + ylab("Total water filtered (liters)") + 
   theme_bw() +
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=13, face="bold"),
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
         strip.text.x = element_text(size = 12))
-v_HrperD + theme(legend.position="none")
-
+v_HrperDkrill + theme(legend.position="none")
 
 ggarrange(v_HrperDfish, v_HrperDkrill, 
           labels = c("A", "B"), # THIS IS SO COOL!!
           legend = "none",
-          ncol = 1, nrow = 2) %>% 
-annotate_figure(top = text_grob("Water volume filtered per day (all deployments >2 hours)", face = "bold", size = 14))
+          ncol = 1, nrow = 2)
 
 
-# annual amount of water filtered per individual per day
+# annual amount of water filtered per individual, varying days
 vol_master_for_year_join <- vol_master_varying_HrperD %>% 
   mutate(dummy = 1)
 vol_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1) %>% 
@@ -435,8 +438,9 @@ v_DperYrfish <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:1
                       labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
   scale_shape_manual(values = Shape,
                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
-  #scale_x_continuous(breaks=seq(0, 12, 3)) +
+  scale_y_log10(labels = scales::comma) + 
   xlab("Days feeding") + ylab("Total water filtered (liters)") +
+  ggtitle("Water filtered per individual per year (all deployments >2 hours)") +
   theme_bw() +
   theme(axis.text=element_text(size=12),
         axis.title=element_text(size=13, face="bold"),
@@ -444,7 +448,7 @@ v_DperYrfish <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:1
         strip.text.x = element_text(size = 12))
 v_DperYrfish + theme(legend.position="none")
 
-
+vol_master_varying_DperYr$SpeciesCode <- fct_relevel(vol_master_varying_DperYr$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
 v_DperYrkrill <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
                        aes(x = days_feeding, y = TotalAnnualWaterFiltered, color = SpeciesCode, shape = SpeciesCode)) +
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
@@ -454,7 +458,7 @@ v_DperYrkrill <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:
                       labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
   scale_shape_manual(values = Shape,
                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
-  #scale_x_continuous(breaks=seq(0, 12, 3)) +
+  scale_y_log10(labels = scales::comma) + 
   xlab("Days feeding") + ylab("Total water filtered (liters)") +
   theme_bw() +
   theme(axis.text=element_text(size=12),
@@ -466,14 +470,13 @@ v_DperYrkrill + theme(legend.position="none")
 ggarrange(v_DperYrfish, v_DperYrkrill, 
           labels = c("A", "B"), # THIS IS SO COOL!!
           legend = "none",
-          ncol = 1, nrow = 2) %>% 
-annotate_figure(top = text_grob("Water volume filtered per year (all deployments >2 hours)", face = "bold", size = 14))
-
+          ncol = 1, nrow = 2)
+  
 
 
 ###########################################
 # preliminary plots for prey consumption
-###########################################
+########################################### 
 # plot predictions from literature, with ours
 pal <- c("Balaenoptera acutorostrata" = "gold3", "Balaenoptera bonaerensis" = "firebrick3", "Balaenoptera edeni" = "darkorchid3", "Balaenoptera borealis" = "black",  "Megaptera novaeangliae" = "gray30", "Balaenoptera physalus" = "chocolate3", "Balaenoptera musculus" = "dodgerblue2" )
 Shape <- c("Balaenoptera acutorostrata" = 10, "Balaenoptera bonaerensis" = 15, "Balaenoptera edeni" = 8, "Balaenoptera borealis" = 7, "Megaptera novaeangliae" = 17, "Balaenoptera physalus" = 18, "Balaenoptera musculus" = 19)
@@ -520,62 +523,131 @@ ingest_directpredict_plot
 #Save pdf of plot
 dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
-# plot for known 
 
 
-# run for plot of hours, up to one day
-resolution <- 100
-# Calculate feeding over time (for plotting)
-max_hours <- 24
-plot_data <- tibble(t = seq(0, 24, length.out = resolution),
-                    dummy = 1) %>%
-  full_join(mutate(scenario_data, dummy = 1)) %>%
-  select(-dummy) %>%
-  filter(Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%
-  mutate(prey_consumed_day = mean_hourly_prey_in_g * t / 1e6)
-# Plot scenarios
-PreyConsumptionbyHour <-ggplot(plot_data,
-       aes(x = t, 
-           y = prey_consumed_day, 
-           linetype = calc_type, 
-           color = scenario_type)) +
-  geom_line() +
+
+
+# plot of prey consumed per hour (krill only; all deployments >2 hours)
+# Prepare data
+Prey_consumpt_hr <- cetacean_data %>% 
+  filter(TotalTagTime_h > 2, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis", "acutorostrata") & sonar_exp %in% c("none", NA)) %>%  
+  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E, TotalTagTime_h) %>%
+  gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
+  #  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
+  mutate(SpeciesCode = substr(ID,1,2), 
+        hourly_prey_in_g = prey_wgt_g * feeding_rate,
+         hourly_prey_in_kg = hourly_prey_in_g/1000,
+         scenario_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "medNULL_wt_g"), "NULL", "BOUT"),
+         calc_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "wgtMeanBOUT_wt_g"), "mean", "med")) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  unite("scenario_calc", c("scenario_type", "calc_type"), sep = "_", remove = FALSE)
+
+Prey_consumpt_hr %>% group_by(SpeciesCode) %>% summarise(n_distinct(ID)) %>% View
+
+#now plot
+pal <- c("ba" = "gold3", "bb" = "firebrick3", "be" = "darkorchid3",  "mn" = "gray30", "bp" = "chocolate3", "bw" = "dodgerblue2" )
+Shape <- c("ba" = 10, "bb" = 15, "be" = 8, "mn" = 17, "bp" = 18, "bw" = 19)
+Prey_consumpt_hr$SpeciesCode <- fct_relevel(Prey_consumpt_hr$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
+
+Prey_consumpt_hr <- ggplot(Prey_consumpt_hr, aes(x = SpeciesCode, y = hourly_prey_in_kg, 
+                                                         color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.8, position = position_jitterdodge(jitter.width=0.9)) + 
+  geom_boxplot(inherit.aes = T, aes(group = SpeciesCode), guides = FALSE, outlier.shape = NA, alpha = 0) +
+  facet_grid(.~scenario_calc) +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values = Shape) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Species") + ylab("Prey consumption per hour (kg)") + 
+  ggtitle("Krill consumed per individual per hour (all deployments >2 hours)") +
   theme_bw() +
-  facet_grid(~Species) +
-  scale_y_continuous(breaks=seq(0,140,20)) +
-  labs(x = "Hours feeding", y = "Prey consumed by individual (metric tons)") +
-  geom_text(aes(y = prey_consumed_day + 2, x = 23, 
-                label = format(prey_consumed_day, digits = 0)),
-            data = filter(plot_data, t == max(t)))
-#Save pdf of plot
-dev.copy2pdf(file="PreyConsumptionbyHour.pdf", width=14, height=8)
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+Prey_consumpt_hr + theme(legend.position="none")
 
-# run for plot of months
-resolution <- 100
-# Calculate feeding over time (for plotting)
-max_months <- 6
-plot_data <- tibble(t = seq(0, 24 * 30 * max_months, length.out = resolution),
-                    dummy = 1) %>%
-  full_join(mutate(scenario_data, dummy = 1)) %>%
-  select(-dummy) %>%
-  filter(Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%
-  mutate(prey_consumed_month = mean_hourly_prey_in_g * t / 1e6)
-# Plot scenarios
-PreyConsumptionbyMonth <- ggplot(plot_data,
-       aes(x = t / 24 / 30, 
-           y = prey_consumed_month, 
-           linetype = calc_type, 
-           color = scenario_type)) +
-  facet_grid(~Species) +
-  geom_line() +
+
+#boxplot of prey consumed per day (tags on >24h)
+Prey_consumpt_hr$SpeciesCode <- fct_relevel(Prey_consumpt_hr$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
+preyconsumpt_24_deploy <- ggplot(filter(Prey_consumpt_hr, TotalTagTime_h > 24), aes(x = SpeciesCode, y = hourly_prey_in_kg*24, 
+                                                       color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.8, position = position_jitterdodge(jitter.width=0.9)) + 
+  geom_boxplot(inherit.aes = T, aes(group = SpeciesCode), guides = FALSE, outlier.shape = NA, alpha = 0) +
+  facet_grid(.~scenario_calc) +
+  scale_colour_manual(values = pal) +
+  scale_shape_manual(values = Shape) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Species") + ylab("Prey consumption per day (kg)") + 
+  ggtitle("Krill consumed per day (tags on >24 hours)") +
   theme_bw() +
-  labs(x = "Months feeding", y = "Prey consumed per individual (metric tons)") +
-  geom_text(aes(y = prey_consumed_month + 400, x =  5.5,
-                label = format(prey_consumed_month, digits = 0)),
-            data = filter(plot_data, t == max(t)))
-#Save pdf of plot
-dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+preyconsumpt_24_deploy + theme(legend.position="none")
 
+
+# now for varying hours feeding within a day
+prey_master_for_join <- Prey_consumpt_hr %>% 
+  mutate(dummy = 1)
+prey_master_varying_HrperD <- tibble(hours_feeding = seq(1,12,1), dummy = 1) %>% 
+  full_join(prey_master_for_join, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(TotalPreyConsumed_kg = hours_feeding*hourly_prey_in_kg)
+
+prey_master_varying_HrperD$SpeciesCode <- fct_relevel(prey_master_varying_HrperD$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
+prey_HrperDkrill <- ggplot(filter(prey_master_varying_HrperD, TotalTagTime_h > 2),
+                        aes(x = hours_feeding, y = TotalPreyConsumed_kg, color = SpeciesCode, shape = SpeciesCode)) + 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.3) + 
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), size = 0.5) +
+  facet_grid(.~scenario_calc) +
+  scale_colour_manual(name = "Species",
+                      values = pal, 
+                      labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_shape_manual(name = "Species",
+                     values = Shape,
+                     labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_x_continuous(breaks=seq(0, 12, 3)) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Hours feeding") + ylab("Total prey consumed (kg)") +
+  ggtitle("Krill consumed per day (all deployments >2 hours)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+prey_HrperDkrill
+
+
+# now for varying days feeding within a year
+prey_master_for_year_join <- prey_master_varying_HrperD %>% 
+  mutate(dummy = 1)
+prey_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1) %>% 
+  full_join(prey_master_for_year_join, by = "dummy") %>% 
+  select(-"dummy") %>% 
+  mutate(TotalAnnualPreyConsumed_kg = days_feeding*TotalPreyConsumed_kg)
+
+prey_master_varying_DperYr$SpeciesCode <- fct_relevel(prey_master_varying_DperYr$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
+prey_DperYrkrill <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
+                        aes(x = days_feeding, y = TotalAnnualPreyConsumed_kg*1.17, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.75) +
+  facet_grid(SpeciesCode~scenario_calc) +
+  scale_colour_manual(name = "Species",
+                      values = pal, 
+                      labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_shape_manual(name = "Species",
+                     values = Shape,
+                     labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days of high-intensity feeding") + ylab("Total prey consumed (kg)") +
+  ggtitle("Krill consumed per year (all deployments >2 hours)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+prey_DperYrkrill + theme(legend.position="none")
 
 #################################################################################
 # for funsies, some back of the envelope calcs on filtraton capacity comparisons:
@@ -600,4 +672,61 @@ dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
 ##########################
 # Prelim stats exploration
 ##########################
+
+######################
+# Older code below here
+######################
+
+# run for plot of hours, up to one day
+resolution <- 100
+# Calculate feeding over time (for plotting)
+max_hours <- 24
+plot_data <- tibble(t = seq(0, 24, length.out = resolution),
+                    dummy = 1) %>%
+  full_join(mutate(scenario_data, dummy = 1)) %>%
+  select(-dummy) %>%
+  filter(Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%
+  mutate(prey_consumed_day = mean_hourly_prey_in_g * t / 1e6)
+# Plot scenarios
+PreyConsumptionbyHour <-ggplot(plot_data,
+                               aes(x = t, 
+                                   y = prey_consumed_day, 
+                                   linetype = calc_type, 
+                                   color = scenario_type)) +
+  geom_line() +
+  theme_bw() +
+  facet_grid(~Species) +
+  scale_y_continuous(breaks=seq(0,140,20)) +
+  labs(x = "Hours feeding", y = "Prey consumed by individual (metric tons)") +
+  geom_text(aes(y = prey_consumed_day + 2, x = 23, 
+                label = format(prey_consumed_day, digits = 0)),
+            data = filter(plot_data, t == max(t)))
+#Save pdf of plot
+dev.copy2pdf(file="PreyConsumptionbyHour.pdf", width=14, height=8)
+
+# run for plot of months
+resolution <- 100
+# Calculate feeding over time (for plotting)
+max_months <- 6
+plot_data <- tibble(t = seq(0, 24 * 30 * max_months, length.out = resolution),
+                    dummy = 1) %>%
+  full_join(mutate(scenario_data, dummy = 1)) %>%
+  select(-dummy) %>%
+  filter(Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%
+  mutate(prey_consumed_month = mean_hourly_prey_in_g * t / 1e6)
+# Plot scenarios
+PreyConsumptionbyMonth <- ggplot(plot_data,
+                                 aes(x = t / 24 / 30, 
+                                     y = prey_consumed_month, 
+                                     linetype = calc_type, 
+                                     color = scenario_type)) +
+  facet_grid(~Species) +
+  geom_line() +
+  theme_bw() +
+  labs(x = "Months feeding", y = "Prey consumed per individual (metric tons)") +
+  geom_text(aes(y = prey_consumed_month + 400, x =  5.5,
+                label = format(prey_consumed_month, digits = 0)),
+            data = filter(plot_data, t == max(t)))
+#Save pdf of plot
+dev.copy2pdf(file="PreyConsumptionbyMonth.pdf", width=14, height=8)
 
