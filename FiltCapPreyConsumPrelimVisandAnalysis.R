@@ -199,6 +199,9 @@ fv_data <- f_data %>%
 # hist(part_day$LungesPerHour)
 # median(part_day$LungesPerHour)
 
+# read in whale population data. Current data from IUCN 2019 Redlist, whaleing data compiled in Rocha et al. 2014
+pop_data <- read_excel("Filtration project_Whale population and feeding information.xlsx", sheet = 1)
+
 # load data
 d_full_NULL <- read_csv("Cetacea model output NULL_EXTANT.csv") %>% 
   mutate(Species = ifelse(Species == "bonarensis", "bonaerensis", Species))
@@ -282,7 +285,10 @@ vol_master_data <- cetacean_data %>%
   sonar_exp = replace_na(sonar_exp, "none"),
   PreyClean = replace_na(PreyClean, "Krill-feeding"),
   EngulfVolPerHr = LungesPerHour*MW_est_L) %>% 
-  select(-c(Index, Body_length_m, TotalHours, total_lunges, feeding_rate, species, TagOn, TagOff, Species, `Prey notes`))
+  left_join(pop_data, by = "SpeciesCode") %>% 
+  select(-c(Index, Body_length_m, TotalHours, total_lunges, feeding_rate, species, TagOn, TagOff, `Prey notes`, 
+            `Current Range`, `Number removed by 20th century whaling (N. Hemisphere)`, `Number removed by 20th century whaling (S. Hemisphere)`, Species.x)) %>% 
+  rename(Species = Species.y)
 
 
 # View summary info on how many tags in this dataset
@@ -291,7 +297,6 @@ vol_master_data %>% group_by(SpeciesCode) %>%
   summarize(n_distinct(ID),
             meanVFD = mean(EngulfVolPerHr*24),
             seVFD = SE()) %>% View
-
 
 
 
