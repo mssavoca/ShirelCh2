@@ -209,7 +209,13 @@ d_full_BOUT <- read_csv("Cetacea model output BOUT_EXTANT.csv") %>%
   mutate(Species = ifelse(Species == "bonarensis", "bonaerensis", Species))
 
 RorqualData <- read_csv("lunge_rates_from_Paolo.csv") %>% 
-  mutate(`deployment-time_h` = `deployment-time_secs`/60/60)
+ left_join(f_data, by= "ID") %>% 
+  mutate(`deployment-time_h` = `deployment-time_secs`/60/60,
+         SpeciesCode = substr(ID,1,2),)  %>% 
+  select(-c(species)) %>% 
+  arrange(dayhours, ID)
+write_csv(RorqualData, path = "RorqualDataforTimeDay.csv")
+
 
 
 # # sweet tidy code from Max
@@ -234,6 +240,7 @@ OdontoceteData <- read_csv("foragestats_combined_ko2.csv") %>%
 OdontoceteData<- OdontoceteData %>% 
   left_join(d_sum_BOUT, by = c("Genus", "Species"))
 
+
 # REMEMBER: OdontoceteData is all of the data we need. 
 # Add rorqual data to odontocete data
 cetacean_data <- left_join(OdontoceteData, RorqualData, by = "ID") %>%
@@ -242,31 +249,37 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = "ID") %>%
          TotalTagTime_h = coalesce(`deployment-time_h`, total_duration_h)) %>% 
   # drop unknown species
   drop_na(Species) %>% 
-  mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h)          # FEEDING RATE
+  mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h,
+         SpeciesCode = substr(ID,1,2),)  %>%       # FEEDING RATE
+  left_join(pop_data, by = "SpeciesCode") %>% 
+  select(-c(Genus, Species.x, sp_ix, sp, Data_source, Surftime_min_med, Surftime_min_post_max_duration, Surftime_min_post_max_depth, 
+            surf_by_dive_time_max, surf_by_dive_time_med, surf_by_dive_max_duration, surf_by_dive_max_depth, transit_time_min_max, 
+            transit_time_min_median,transit_time_of_dive_max, transit_time_of_dive_median, species, prh_start, prh_stop, prh_fps, 
+            `Current Range`, `Number removed by 20th century whaling (N. Hemisphere)`, `Number removed by 20th century whaling (S. Hemisphere)`)) %>% 
+  rename(Species = Species.y)
 
 
+# 
+# # Gather scenarios, view output
+# scenario_data <- cetacean_data %>% 
+#   filter(TotalTagTime_h > 24, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%   #  & sonar_exp %in% c("none", NA) # possibly includ sonar exp, but it takes away several blues and one fin whale
+#   select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E) %>%
+#   gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
+#   #  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
+#   mutate(hourly_prey_in_g = prey_wgt_g * feeding_rate,
+#          scenario_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "medNULL_wt_g"), "NULL", "BOUT"),
+#          calc_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "wgtMeanBOUT_wt_g"), "mean", "med")) %>% 
+#   mutate(prey_wt_d_t = (hourly_prey_in_g*6)/1000/1000) %>% 
+#   group_by(Species, scenario, scenario_type, calc_type) %>% 
+#   summarize(mean_hourly_prey_in_g = mean(hourly_prey_in_g),
+#             mean_prey_wt_d_t = mean(prey_wt_d_t)) 
 
-
-# Gather scenarios, view output
-scenario_data <- cetacean_data %>% 
-  filter(TotalTagTime_h > 24, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis")) %>%   #  & sonar_exp %in% c("none", NA) # possibly includ sonar exp, but it takes away several blues and one fin whale
-  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E) %>%
-  gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
-  #  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
-  mutate(hourly_prey_in_g = prey_wgt_g * feeding_rate,
-         scenario_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "medNULL_wt_g"), "NULL", "BOUT"),
-         calc_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "wgtMeanBOUT_wt_g"), "mean", "med")) %>% 
-  mutate(prey_wt_d_t = (hourly_prey_in_g*6)/1000/1000) %>% 
-  group_by(Species, scenario, scenario_type, calc_type) %>% 
-  summarize(mean_hourly_prey_in_g = mean(hourly_prey_in_g),
-            mean_prey_wt_d_t = mean(prey_wt_d_t)) 
 
 # combine two dataframes into one monster dataframe
 cetacean_data$total_lunges <- as.double(cetacean_data$total_lunges) # need to do this conversion for coalesce to work below
-
 vol_master_data <- cetacean_data %>%
-  filter(species %in% c("bw", "bp", "mn", "ba")) %>% 
-  select(species, ID, Body_length_m, TotalTagTime_h, feeding_rate, total_lunges, sonar_exp) %>% 
+  filter(SpeciesCode %in% c("bw", "bp", "mn", "ba")) %>% 
+  select(Species, ID, Body_length_m, TotalTagTime_h, feeding_rate, total_lunges, sonar_exp) %>% 
   full_join(fv_data, by = "ID") %>% 
   mutate(LungesPerHour = coalesce(feeding_rate, LungesPerHour),
          TotalTagTime_h = coalesce(TotalTagTime_h, TotalHours),
@@ -286,8 +299,8 @@ vol_master_data <- cetacean_data %>%
   PreyClean = replace_na(PreyClean, "Krill-feeding"),
   EngulfVolPerHr = LungesPerHour*MW_est_L) %>% 
   left_join(pop_data, by = "SpeciesCode") %>% 
-  select(-c(Index, Body_length_m, TotalHours, total_lunges, feeding_rate, species, TagOn, TagOff, `Prey notes`, 
-            `Current Range`, `Number removed by 20th century whaling (N. Hemisphere)`, `Number removed by 20th century whaling (S. Hemisphere)`, Species.x)) %>% 
+  select(-c(Index, Species, Body_length_m, TotalHours, total_lunges, feeding_rate, TagOn, TagOff, `Prey notes`, `Current Range`, Species.x,
+            `Number removed by 20th century whaling (N. Hemisphere)`, `Number removed by 20th century whaling (S. Hemisphere)`)) %>% 
   rename(Species = Species.y)
 
 
@@ -341,6 +354,15 @@ v_all_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 2 & TotalLunges 
         strip.text.x = element_text(size = 12))
 v_all_deploy + theme(legend.position="none") +
   scale_x_discrete(labels=c("ba" = "B. acutorostrata", "be" = "B. edeni", "bb" = "B. bonaerensis", "mn" = "M. novaeangliae", "bp" = "B. physalus", "bw" = "B. musculus")) 
+
+
+# summary results table for water filtration per individual per hour
+vol_summ <- vol_master_data %>% 
+    group_by(SpeciesCode) %>% 
+    filter(TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding") %>% 
+    summarize(MeanWaterFiltered = mean(EngulfVolPerHr),
+              SEWaterFiltered = SE(EngulfVolPerHr))
+
 
 
 v_24_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 24 & TotalLunges > 0 & sonar_exp =="none", PreyClean =="Krill-feeding"),
@@ -477,7 +499,94 @@ ggarrange(v_DperYrfish, v_DperYrkrill,
           legend = "none",
           ncol = 1, nrow = 2)
   
+# annual amount of water filtered current global populartion, varying days
+v_DperYrfish_currentpop <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Fish-feeding"),
+                       aes(x = days_feeding, y = TotalAnnualWaterFiltered*`Population estimate`, color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days feeding") + ylab("Total water filtered (liters)") +
+  ggtitle("Water filtered annually by current global population (all deployments >2 hours)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_DperYrfish_currentpop + theme(legend.position="none")
 
+v_DperYrkrill_currentpop <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
+                        aes(x = days_feeding, y = TotalAnnualWaterFiltered*`Population estimate`, color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days feeding") + ylab("Total water filtered (liters)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_DperYrkrill_currentpop + theme(legend.position="none")
+
+
+ggarrange(v_DperYrfish_currentpop, v_DperYrkrill_currentpop, 
+          labels = c("A", "B"), # THIS IS SO COOL!!
+          legend = "none",
+          ncol = 1, nrow = 2)
+
+
+# annual amount of water filtered historical global population, varying days
+v_DperYrfish_histpop <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Fish-feeding"),
+                                  aes(x = days_feeding, y = TotalAnnualWaterFiltered*`Total removed`, color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days feeding") + ylab("Total water filtered (liters)") +
+  ggtitle("Annual filtration capacity removed by 20th century whaling (all deployments >2 hours)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_DperYrfish_currentpop + theme(legend.position="none")
+
+v_DperYrkrill_histpop <- ggplot(filter(vol_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none", PreyClean == "Krill-feeding"),
+                                   aes(x = days_feeding, y = TotalAnnualWaterFiltered*`Total removed`, color = SpeciesCode, shape = SpeciesCode)) +
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.5) +
+  facet_grid(.~SpeciesCode, labeller = as_labeller(SpCodetoName)) +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days feeding") + ylab("Total water filtered (liters)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+v_DperYrkrill_histpop + theme(legend.position="none")
+
+
+ggarrange(v_DperYrfish_histpop, v_DperYrkrill_histpop, 
+          labels = c("A", "B"), # THIS IS SO COOL!!
+          legend = "none",
+          ncol = 1, nrow = 2)
 
 ###########################################
 # preliminary plots for prey consumption
@@ -530,13 +639,11 @@ dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
 
 
-
-
 # plot of prey consumed per hour (krill only; all deployments >2 hours)
 # Prepare data
 Prey_consumpt_hr <- cetacean_data %>% 
-  filter(TotalTagTime_h > 2, Species %in% c("musculus", "physalus", "novaeangliae", "bonaerensis", "acutorostrata") & sonar_exp %in% c("none", NA)) %>%  
-  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E, TotalTagTime_h) %>%
+  filter(TotalTagTime_h > 2, SpeciesCode %in% c("bw", "bp", "mn", "bb", "ba") & sonar_exp %in% c("none", NA)) %>%  
+  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E, TotalTagTime_h, `Population estimate`, `Total removed`) %>%
   gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
   #  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
   mutate(SpeciesCode = substr(ID,1,2), 
@@ -570,6 +677,12 @@ Prey_consumpt_hr <- ggplot(Prey_consumpt_hr, aes(x = SpeciesCode, y = hourly_pre
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
         strip.text.x = element_text(size = 12))
 Prey_consumpt_hr + theme(legend.position="none")
+
+#summary table for results section
+prey_summ <- Prey_consumpt_hr %>% 
+  group_by(Species, scenario_calc) %>% 
+  summarize(MeanKrillConsumed_kg = mean(hourly_prey_in_kg),
+            SEMeanKrillConsumed_kg = SE(hourly_prey_in_kg))
 
 
 #boxplot of prey consumed per day (tags on >24h)
@@ -654,6 +767,52 @@ prey_DperYrkrill <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in%
         strip.text.x = element_text(size = 12))
 prey_DperYrkrill + theme(legend.position="none")
 
+
+
+# annual amount of krill consumed, current global population, varying days
+prey_DperYrkrill_currentpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
+                           aes(x = days_feeding, y = TotalAnnualPreyConsumed_kg*1.17*`Population estimate`, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.75) +
+  facet_grid(SpeciesCode~scenario_calc) +
+  scale_colour_manual(name = "Species",
+                      values = pal, 
+                      labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_shape_manual(name = "Species",
+                     values = Shape,
+                     labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days of high-intensity feeding") + ylab("Total prey consumed (kg)") +
+  ggtitle("Krill consumed annually by current global population (all deployments >2 hours)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+prey_DperYrkrill_currentpop + theme(legend.position="none")
+
+# annual amount of krill consumed, population removed by 20th century whaling, varying days
+prey_DperYrkrill_histpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
+                                      aes(x = days_feeding, y = TotalAnnualPreyConsumed_kg*1.17*`Total removed`, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
+  geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
+  geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.75) +
+  facet_grid(SpeciesCode~scenario_calc) +
+  scale_colour_manual(name = "Species",
+                      values = pal, 
+                      labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_shape_manual(name = "Species",
+                     values = Shape,
+                     labels = c( "B. bonaerensis", "B. acutorostrata", "M. novaeangliae", "B. physalus", "B. musculus")) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days of high-intensity feeding") + ylab("Total prey consumed (kg)") +
+  ggtitle("Annual lost krill consumption due to 20th century whaling (all deployments >2 hours)") +
+  theme_bw() +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
+        strip.text.x = element_text(size = 12))
+prey_DperYrkrill_histpop + theme(legend.position="none")
+
 #################################################################################
 # for funsies, some back of the envelope calcs on filtraton capacity comparisons:
 #################################################################################
@@ -672,6 +831,8 @@ prey_DperYrkrill + theme(legend.position="none")
 ((4.2e+12 + 9e+12)*120/7.18e+18)*100 # Percentage of the upper 327m of the Southern Ocean that the pre-exploitation population of blue and fin whales 
 
 
+# for the Great Lakes, see: https://www.glerl.noaa.gov/education/ourlakes/lakes.html
+# the whaled population of blue and fin whales each filtered approximately the volume of Lake Ontario per year, which is 1,639,000,000,000,000
 
 
 ##########################
