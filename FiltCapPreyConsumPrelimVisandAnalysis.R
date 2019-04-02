@@ -89,7 +89,7 @@ prey_predict_from_BMR <- read_excel("PreyIngestPredict.xlsx", sheet = 2) %>%
          dummy = 1)
 BMRtoFMRprojection <- tibble(beta = seq(2,5,0.5), dummy = 1) %>% 
   full_join(prey_predict_from_BMR, by = "dummy") %>% 
-  select(-"dummy") %>% 
+  select(-dummy) %>% 
   mutate(ADMR = beta*KleiberBMR,
          R  = ADMR/(0.8*((3900*Z)+5400*(1-Z))),
          R_compressed_90days = (R*365)/90,
@@ -243,19 +243,16 @@ OdontoceteData<- OdontoceteData %>%
 
 # REMEMBER: OdontoceteData is all of the data we need. 
 # Add rorqual data to odontocete data
-cetacean_data <- left_join(OdontoceteData, RorqualData, by = "ID") %>%
+cetacean_data <- left_join(OdontoceteData, RorqualData, by = c("ID")) %>%
   # feeding events are lunges, buzzes for rorquals, odontocetes
   mutate(TotalFeedingEvents = coalesce(total_lunges, total_buzz_count),
          TotalTagTime_h = coalesce(`deployment-time_h`, total_duration_h)) %>% 
   # drop unknown species
+  rename(Species = Species.x) %>% 
   drop_na(Species) %>% 
   mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h,
          SpeciesCode = substr(ID,1,2),)  %>%       # FEEDING RATE
   left_join(pop_data, by = "SpeciesCode") %>% 
-  select(-c(Genus, Species.x, sp_ix, sp, Data_source, Surftime_min_med, Surftime_min_post_max_duration, Surftime_min_post_max_depth, 
-            surf_by_dive_time_max, surf_by_dive_time_med, surf_by_dive_max_duration, surf_by_dive_max_depth, transit_time_min_max, 
-            transit_time_min_median,transit_time_of_dive_max, transit_time_of_dive_median, species, prh_start, prh_stop, prh_fps, 
-            `Current Range`, `Number removed by 20th century whaling (N. Hemisphere)`, `Number removed by 20th century whaling (S. Hemisphere)`)) %>% 
   rename(Species = Species.y)
 
 
@@ -588,26 +585,13 @@ ggarrange(v_DperYrfish_histpop, v_DperYrkrill_histpop,
           legend = "none",
           ncol = 1, nrow = 2)
 
+
 ###########################################
 # preliminary plots for prey consumption
 ########################################### 
 # plot predictions from literature, with ours
 pal <- c("Balaenoptera acutorostrata" = "gold3", "Balaenoptera bonaerensis" = "firebrick3", "Balaenoptera edeni" = "darkorchid3", "Balaenoptera borealis" = "black",  "Megaptera novaeangliae" = "gray30", "Balaenoptera physalus" = "chocolate3", "Balaenoptera musculus" = "dodgerblue2" )
 Shape <- c("Balaenoptera acutorostrata" = 10, "Balaenoptera bonaerensis" = 15, "Balaenoptera edeni" = 8, "Balaenoptera borealis" = 7, "Megaptera novaeangliae" = 17, "Balaenoptera physalus" = 18, "Balaenoptera musculus" = 19)
-
-ingest_MSpredict_plot <- ggplot(BMRtoFMRprojection, aes(log10(M_kg), log10(R), color = Species, shape = Species)) +
-  geom_point() + 
-  #geom_smooth() +
-  scale_colour_manual(values = pal,
-                      labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
-  scale_shape_manual(values = Shape,
-                     labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
-  #ylim(2.5,4.5) +
-  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (R) in kg]") +
-  theme_bw() +
-  theme(axis.text=element_text(size=14),
-        axis.title=element_text(size=16,face="bold"))
-ingest_MSpredict_plot
 
 
 ingest_directpredict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
@@ -638,6 +622,20 @@ ingest_directpredict_plot
 dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
 
+ingest_MSpredict_plot <- ggplot(BMRtoFMRprojection, aes(log10(M_kg), log10(R), color = Species, shape = Species)) +
+  geom_point() + 
+  #geom_smooth() +
+  scale_colour_manual(values = pal,
+                      labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  scale_shape_manual(values = Shape,
+                     labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
+  #ylim(2.5,4.5) +
+  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (R) in kg]") +
+  theme_bw() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
+ingest_MSpredict_plot
+
 
 # plot of prey consumed per hour (krill only; all deployments >2 hours)
 # Prepare data
@@ -661,7 +659,7 @@ pal <- c("ba" = "gold3", "bb" = "firebrick3", "be" = "darkorchid3",  "mn" = "gra
 Shape <- c("ba" = 10, "bb" = 15, "be" = 8, "mn" = 17, "bp" = 18, "bw" = 19)
 Prey_consumpt_hr$SpeciesCode <- fct_relevel(Prey_consumpt_hr$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
 
-Prey_consumpt_hr <- ggplot(Prey_consumpt_hr, aes(x = SpeciesCode, y = hourly_prey_in_kg, 
+Prey_consumpt_hr_plot <- ggplot(Prey_consumpt_hr, aes(x = SpeciesCode, y = hourly_prey_in_kg, 
                                                          color = SpeciesCode, shape = SpeciesCode)) +
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.8, position = position_jitterdodge(jitter.width=0.9)) + 
   geom_boxplot(inherit.aes = T, aes(group = SpeciesCode), guides = FALSE, outlier.shape = NA, alpha = 0) +
@@ -676,7 +674,7 @@ Prey_consumpt_hr <- ggplot(Prey_consumpt_hr, aes(x = SpeciesCode, y = hourly_pre
         axis.title=element_text(size=13, face="bold"),
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"),
         strip.text.x = element_text(size = 12))
-Prey_consumpt_hr + theme(legend.position="none")
+Prey_consumpt_hr_plot + theme(legend.position="none")
 
 #summary table for results section
 prey_summ <- Prey_consumpt_hr %>% 
@@ -686,7 +684,7 @@ prey_summ <- Prey_consumpt_hr %>%
 
 
 #boxplot of prey consumed per day (tags on >24h)
-Prey_consumpt_hr$SpeciesCode <- fct_relevel(Prey_consumpt_hr$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
+Prey_consumpt_hr$SpeciesCode <- fct_relevel(Prey_consumpt_hr$SpeciesCode, c("be", "bb", "ba","mn","bp","bw"))
 preyconsumpt_24_deploy <- ggplot(filter(Prey_consumpt_hr, TotalTagTime_h > 24), aes(x = SpeciesCode, y = hourly_prey_in_kg*24, 
                                                        color = SpeciesCode, shape = SpeciesCode)) +
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.8, position = position_jitterdodge(jitter.width=0.9)) + 
@@ -747,7 +745,7 @@ prey_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1)
 
 prey_master_varying_DperYr$SpeciesCode <- fct_relevel(prey_master_varying_DperYr$SpeciesCode, "be", "bb", "ba","mn","bp","bw")
 prey_DperYrkrill <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
-                        aes(x = days_feeding, y = TotalAnnualPreyConsumed_kg*1.17, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
+                        aes(x = days_feeding, y = (TotalAnnualPreyConsumed_kg)/0.83, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.75) +
   facet_grid(SpeciesCode~scenario_calc) +
@@ -771,7 +769,8 @@ prey_DperYrkrill + theme(legend.position="none")
 
 # annual amount of krill consumed, current global population, varying days
 prey_DperYrkrill_currentpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
-                           aes(x = days_feeding, y = TotalAnnualPreyConsumed_kg*1.17*`Population estimate`, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
+                           aes(x = days_feeding, y = (TotalAnnualPreyConsumed_kg/0.83)*`Population estimate`, 
+                               color = SpeciesCode, shape = SpeciesCode)) +  # divide by 0.83 to get estimate of MAC, see Eq. (8) 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.75) +
   facet_grid(SpeciesCode~scenario_calc) +
@@ -793,7 +792,8 @@ prey_DperYrkrill_currentpop + theme(legend.position="none")
 
 # annual amount of krill consumed, population removed by 20th century whaling, varying days
 prey_DperYrkrill_histpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
-                                      aes(x = days_feeding, y = TotalAnnualPreyConsumed_kg*1.17*`Total removed`, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
+                                      aes(x = days_feeding, y = (TotalAnnualPreyConsumed_kg/0.83)*`Total removed`, 
+                                          color = SpeciesCode, shape = SpeciesCode)) +  # divide by 0.83 to get estimate of MAC, see Eq. (8) 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.75) +
   facet_grid(SpeciesCode~scenario_calc) +
