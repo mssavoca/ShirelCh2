@@ -96,6 +96,23 @@ BMRtoFMRprojection <- tibble(beta = seq(2,5,0.5), dummy = 1) %>%
          R_compressed_120days = (R*365)/120)
 
 
+# estimating amount of food consumed over the course of a feeding season (see Lockyer 2007).
+# using the equation I developed with Dave Cade:E_preyseason = ((W_blubber*E_blubber)/A) + (((beta*293.1*M^0.75)*D_feeding)/A)
+sims <- crossing(W_blubber = 18500,
+                 E_blubber = seq(27e3, 37e3, by = 1e3),
+                 A = 0.8,
+                 beta = seq(2, 5, by = 0.5),
+                 M = 42240,
+                 D_feeding = seq(60, 182.5, by = 10)) %>% 
+  mutate(E_preyseason = ((W_blubber*E_blubber)/A) + (((beta*293.1*M^0.75)*D_feeding)/A))
+
+sims_plot <- sims %>% 
+  ggplot(aes(E_preyseason)) +
+  geom_histogram() +
+  theme_classic()
+
+sims_summ <- summarize_at(sims, vars(E_preyseason), list(mean, sd, median, min, max))
+
 
 
 f_data <- read_excel("ALLPRHS 2.5.2019.xls")
