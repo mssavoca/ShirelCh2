@@ -854,11 +854,59 @@ prey_DperYrkrill_histpop + theme(legend.position="none")
 
 #Prepare data
 Anch_data <- vol_master_data %>% 
-  filter(SpeciesCode == "mn" & PreyClean == "Fish-feeding" & Study_Area == "Monterey") %>% 
-  mutate(EngulfVolPerHr = LungesPerHour*Med_Recalc_L,
-         EngulfVolPerDayHr = LungesPerDayHour*Med_Recalc_L) %>% )
+  filter(SpeciesCode == "mn" & PreyClean == "Fish-feeding" & Study_Area %in% c("Monterey", "SoCal")) %>% 
+  mutate(Med_Recalc_m3 = Med_Recalc_L/1000,
+         EngulfVolPerHr_m3 = LungesPerDayHour*Med_Recalc_m3,
+         Max_anch_mouthful_kg = EngulfVolPerHr_m3*7.8,
+         Max_anch_perhour_kg = Max_anch_mouthful_kg*LungesPerDayHour)
+Anch_data_for_join <- Anch_data %>% 
+  mutate(dummy = 1)
+Anch_master_varying_HrperD <- tibble(hours_feeding = seq(1,12,1), dummy = 1) %>% 
+  full_join(Anch_data_for_join, by = "dummy") %>% 
+  select(-dummy) %>% 
+  filter(TotalTagTime_h > 2 & TotalLunges > 0) %>% 
+  mutate(MaxDailyAnchConsumed_kg = hours_feeding*Max_anch_perhour_kg)
 
+pal <- c("ba" = "gold3", "bb" = "firebrick3", "be" = "darkorchid3",  "mn" = "gray30", "bp" = "chocolate3", "bw" = "dodgerblue2" )
+Shape <- c("ba" = 10, "bb" = 15, "be" = 8, "mn" = 17, "bp" = 18, "bw" = 19)
+
+Anch_consumpt_hr_plot <- ggplot(Anch_master_varying_HrperD, aes(x = hours_feeding, y = MaxDailyAnchConsumed_kg*0.4)) +
+  geom_point(color = "gray30", shape = 17, alpha = 0.8) + 
+  geom_smooth(inherit.aes = T, color = "blue", size = 0.75) +
+  scale_x_continuous(breaks=seq(0, 12, 2)) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Daytime hours feeding") + ylab("Anchovy consumption per day (kg)") + 
+  ggtitle("Humpback whale anchovy consumption (all deployments >2 hours)") +
+  theme_bw() +
+  theme(axis.text = element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"))
+Anch_consumpt_hr_plot + theme(legend.position="none")
   
+Anch_master_for_year_join <- Anch_master_varying_HrperD %>% 
+  mutate(dummy = 1)
+Anch_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1) %>% 
+  full_join(Anch_master_for_year_join, by = "dummy") %>% 
+  select(-dummy) %>% 
+  mutate(MaxAnnualAnchConsumed_kg = days_feeding*MaxDailyAnchConsumed_kg)
+
+
+Anch_consumpt_yr_plot <- ggplot(filter(Anch_master_varying_DperYr, hours_feeding %in% (6:12)), 
+                                aes(x = days_feeding, y = MaxAnnualAnchConsumed_kg*0.4)) +
+  geom_point(color = "gray30", shape = 17, alpha = 0.8) + 
+  geom_smooth(inherit.aes = T, color = "blue", size = 0.75) +
+  scale_y_log10(labels = scales::comma) + 
+  xlab("Days feeding") + ylab("Anchovy consumption per year (kg)") + 
+  theme_bw() +
+  theme(axis.text = element_text(size=12),
+        axis.title=element_text(size=13, face="bold"),
+        plot.title = element_text(hjust = 0.5, size = 14, face="bold"))
+Anch_consumpt_yr_plot + theme(legend.position="none")
+
+ggarrange(Anch_consumpt_hr_plot, Anch_consumpt_yr_plot, 
+          labels = c("A", "B"), # THIS IS SO COOL!!
+          legend = "none",
+          ncol = 1, nrow = 2)
 
 #################################################################################
 # for funsies, some back of the envelope calcs on filtraton capacity comparisons:
