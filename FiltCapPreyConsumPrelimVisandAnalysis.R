@@ -273,13 +273,13 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = c("ID")) %>%
   # feeding events are lunges, buzzes for rorquals, odontocetes
   mutate(TotalFeedingEvents = coalesce(total_lunges, total_buzz_count),
          TotalTagTime_h = coalesce(`deployment-time_h`, total_duration_h)) %>% 
-  drop_na(Species) %>% 
+  #drop_na(Species) %>% 
   mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h,
          SpeciesCode = substr(ID,1,2),)  %>%       # FEEDING RATE
-  left_join(pop_data, by = "SpeciesCode") %>% 
-  rename(Species = Species.y)
+  left_join(pop_data, by = "SpeciesCode")
+  #rename(Species = Species.y)
 cetacean_data$SpeciesCode <- sub("ba", "bb", cetacean_data$SpeciesCode)
-
+cetacean_data$Species <- sub("Balaenoptera acutorostrata", "Balaenoptera bonaerensis", cetacean_data$Species)
 
 # 
 # # Gather scenarios, view output
@@ -301,6 +301,7 @@ cetacean_data$SpeciesCode <- sub("ba", "bb", cetacean_data$SpeciesCode)
 cetacean_data$total_lunges <- as.double(cetacean_data$total_lunges) # need to do this conversion for coalesce to work below
 vol_master_data <- cetacean_data %>%
   filter(SpeciesCode %in% c("bw", "bp", "mn", "bb", "be")) %>% 
+  select(-69) %>% 
   select(ID, Species, Body_length_m, TotalTagTime_h, feeding_rate, total_lunges, sonar_exp) %>% 
   full_join(fv_data, by = "ID") %>% 
   mutate(LungesPerHour = coalesce(feeding_rate, LungesPerHour),
@@ -854,7 +855,7 @@ prey_DperYrkrill_histpop + theme(legend.position="none")
 
 #Prepare data
 Anch_data <- vol_master_data %>% 
-  filter(SpeciesCode == "mn" & PreyClean == "Fish-feeding" & Study_Area %in% c("Monterey", "SoCal")) %>% 
+  filter(SpeciesCode == "mn" & PreyClean == "Fish-feeding" & Prey == "Anchovies" & Study_Area %in% c("Monterey", "SoCal")) %>% 
   mutate(Med_Recalc_m3 = Med_Recalc_L/1000,
          EngulfVolPerHr_m3 = LungesPerDayHour*Med_Recalc_m3,
          Max_anch_mouthful_kg = EngulfVolPerHr_m3*7.8,
