@@ -2,6 +2,24 @@
 ## Analyses and visualizations for Filtration capacity and prey consumption paper
 #################################################################################
 
+##############################################
+# get Alex Boersma's illustrations for figures
+##############################################
+imgBw <- png::readPNG("./Blue-min.png")
+rastBw <- grid::rasterGrob(imgBw, interpolate = T)
+imgBp <- png::readPNG("./Fin-min.png")
+rastBp <- grid::rasterGrob(imgBp, interpolate = T)
+imgBe <- png::readPNG("./Bryde's-min.png")
+rastBe <- grid::rasterGrob(imgBe, interpolate = T)
+imgMn <- png::readPNG("./Humpback-min_optimized.png")
+rastMn <- grid::rasterGrob(imgMn, interpolate = T)
+imgBb <- png::readPNG("./Minke-min_optimized.png")
+rastBb <- grid::rasterGrob(imgBb, interpolate = T)
+
+
+
+
+
 #############################
 # Load functions and packages
 #############################
@@ -28,20 +46,6 @@ abbr_binom = function(binom) {
         sep = ".")
 }
 
-
-##############################################
-# get Alex Boersma's illustrations for figures
-##############################################
-imgBw <- png::readPNG("./Blue-min.png")
-rastBw <- grid::rasterGrob(imgBw, interpolate = T)
-imgBp <- png::readPNG("./Fin-min.png")
-rastBp <- grid::rasterGrob(imgBp, interpolate = T)
-imgBe <- png::readPNG("./Bryde's-min.png")
-rastBe <- grid::rasterGrob(imgBe, interpolate = T)
-imgMn <- png::readPNG("./Humpback-min_optimized.png")
-rastMn <- grid::rasterGrob(imgMn, interpolate = T)
-imgBb <- png::readPNG("./Minke-min_optimized.png")
-rastBb <- grid::rasterGrob(imgBb, interpolate = T)
 
 
 ##########################################
@@ -89,7 +93,7 @@ prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
     # ADMR = beta*BMR, where beat is a value between 2-5 (see Barlow et al. 2008 p.287 for more)
 # estimate of R from Leaper and Lavigne 2007, Barlow et al. 2008:
   # R = ADMR/(0.8*[3900*Z + 5450*(1-Z)])
-# to compute prey intake per day when feeding if ALL feeding is compresseded into 120 days
+# to compute prey intake per day when feeding if ALL feeding is compressed into 120 days
   # (R*365)/120
 
 prey_predict_from_BMR <- read_excel("PreyIngestPredict.xlsx", sheet = 2) %>% 
@@ -142,9 +146,9 @@ names(v_data)[names(v_data) == 'Species'] <- 'CommonName'
 v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
 
 
-# creating fucntions from Shirel's paper for MW for engulfment capacity in liters for each species where we have a known length
+# creating fucntions from Shirel's paper for MW (in kg) for engulfment capacity in liters for each species where we have a known length
 bw_L <- function(x) {
-  (x^3.667316*10^-0.014078)*0.9766}
+  (x^3.667316*10^-0.014078)*0.9766}   # change to 0.9737098 CHANGE!!!
 
 bp_L <- function(x) {
   (x^3.54883*10^0.15604)*0.9766}
@@ -204,10 +208,13 @@ f_data = f_data %>%
       Study_Area == "South Africa" ~ "South Africa",
       Study_Area == "Antarctic" ~ "Antarctic",
       Study_Area == "Chile" ~ "Chile"))
+f_data$LungesPerDayHour[is.nan(f_data$LungesPerDayHour)] <- NA
+f_data$LungesPerTwHour[is.nan(f_data$LungesPerTwHour)] <- NA
+f_data$LungesPerNightHour[is.nan(f_data$LungesPerNightHour)] <- NA
 
 
 
-# combining feeding rates and engulfment volume dataframes into what we need
+# combining feeding rates and engulfment volume dataframes into what we need ## GET MAX TO HELP DO EMP ENGULF CAP WHERE EXISTS, SP AVER OTHERWISE
 fv_data <- f_data %>% 
   left_join(v_data_species, by = "CommonName") %>% 
   mutate(EngulfVolPerHr = LungesPerHour*Med_Recalc_L,
@@ -273,10 +280,35 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = c("ID")) %>%
   # feeding events are lunges, buzzes for rorquals, odontocetes
   mutate(TotalFeedingEvents = coalesce(total_lunges, total_buzz_count),
          TotalTagTime_h = coalesce(`deployment-time_h`, total_duration_h)) %>% 
+  left_join(v_data_species, by = "CommonName") %>% 
+  mutate(EngulfVolPerHr = LungesPerHour*Med_Recalc_L,
+         EngulfVolPerDayHr = LungesPerDayHour*Med_Recalc_L) %>% 
+  select(-c(Med_L, Mean_L)) %>% 
+  left_join(pop_data, by = "SpeciesCode") %>% 
   #drop_na(Species) %>% 
-  mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h,
-         SpeciesCode = substr(ID,1,2),)  %>%       # FEEDING RATE
-  left_join(pop_data, by = "SpeciesCode")
+  mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h,    # FEEDING RATE
+         SpeciesCode = substr(ID,1,2),
+         geoMeanNULL_wt_g_DC = case_when(
+           Species =="Balaenoptera musculus" ~ 0.629646079*79862.436,        # kg to g multiply by 1000, m3 to l divide by 1000, so they cancel each other out; The second number is the Med_recalc_L from vol_data_species
+           Species =="Balaenoptera physalus" ~ 0.620866221*60010.441,        # data from BaleenWhaleForagingDistBigKrill100Bins.xlsx
+           Species =="Megaptera novaeangliae" ~ 0.608799363*25683.815,
+           Species =="Balaenoptera bonaerensis" ~ 0.498822479*3069.295),
+         MedNULL_wt_g_DC = case_when(
+           Species =="Balaenoptera musculus" ~ 0.705480231*79862.436,        #kg to g multiply by 1000, m3 to l divide by 1000, so they cancel each other out; The second number is the Med_recalc_L from vol_data_species
+           Species =="Balaenoptera physalus" ~ 0.657933225*60010.441,        # data from BaleenWhaleForagingDistBigKrill100Bins.xlsx
+           Species =="Megaptera novaeangliae" ~ 0.657933225*25683.815,
+           Species =="Balaenoptera bonaerensis" ~ 0.497702356*3069.295), 
+         geoMeanBOUT_wt_g_DC = case_when(
+           Species =="Balaenoptera musculus" ~ 1.665454025*79862.436,        #kg to g multiply by 1000, m3 to l divide by 1000, so they cancel each other out; The second number is the Med_recalc_L from vol_data_species
+           Species =="Balaenoptera physalus" ~ 1.895174907*60010.441,        # data from BaleenWhaleForagingDistBigKrillBout100Bins.xlsx
+           Species =="Megaptera novaeangliae" ~ 1.365715958*25683.815,
+           Species =="Balaenoptera bonaerensis" ~ 0.555868207*3069.295),
+         MedBOUT_wt_g_DC = case_when(
+           Species =="Balaenoptera musculus" ~ 1.873817423*79862.436,        #kg to g multiply by 1000, m3 to l divide by 1000, so they cancel each other out; The second number is the Med_recalc_L from vol_data_species
+           Species =="Balaenoptera physalus" ~ 2.15443469*60010.441,        # data from BaleenWhaleForagingDistBigKrillBout100Bins.xlsx
+           Species =="Megaptera novaeangliae" ~ 1.519911083*25683.815,
+           Species =="Balaenoptera bonaerensis" ~ 0.572236766*3069.295)
+         )      
   #rename(Species = Species.y)
 cetacean_data$SpeciesCode <- sub("ba", "bb", cetacean_data$SpeciesCode)
 cetacean_data$Species <- sub("Balaenoptera acutorostrata", "Balaenoptera bonaerensis", cetacean_data$Species)
@@ -330,14 +362,13 @@ vol_master_data$SpeciesCode <- sub("ba", "bb", vol_master_data$SpeciesCode)
 
 # View summary info on how many tags in this dataset
 vol_master_data %>% group_by(SpeciesCode) %>% 
-  filter(TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp =="none") %>% 
+  filter(TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp %in% c("none", NA)) %>% 
   summarize(n_distinct(ID),
             meanVFD = mean(EngulfVolPerHr*24),
             seVFD = SE(EngulfVolPerHr*24)) %>% View
 
 
 
-###########################################
 # preliminary plots for filtration capacity
 ###########################################
 
@@ -397,7 +428,7 @@ v_24_deploy <- ggplot(filter(vol_master_data, TotalTagTime_h > 24 & TotalLunges 
   scale_colour_manual(values = pal) +
   scale_y_log10(labels = scales::comma) + 
   scale_shape_manual(values = Shape) +
-  xlab("Species") + ylab("VFD (liters per day)") + 
+  xlab("Species") + ylab("Total water filtered (liters per day)") + 
   ggtitle("Water filtered per individual per day (tags on >24 hours)") +
   theme_bw() +
   theme(axis.text.x = element_text(size=12, angle = 45, hjust = 1, face="italic"),
@@ -620,7 +651,7 @@ pal <- c("Balaenoptera acutorostrata" = "gold3", "Balaenoptera bonaerensis" = "f
 Shape <- c("Balaenoptera acutorostrata" = 10, "Balaenoptera bonaerensis" = 15, "Balaenoptera edeni" = 8, "Balaenoptera borealis" = 7, "Megaptera novaeangliae" = 17, "Balaenoptera physalus" = 18, "Balaenoptera musculus" = 19)
 
 
-ingest_directpredict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))) +
+ingest_directpredict_plot <- ggplot(prey_predict_w_M, aes(M_kg, R)) +
   geom_line(data = filter(prey_predict_w_M, !`Reference(s)` %in%  c("Savoca et al., this study (lower bound)", 
                                                                     "Savoca et al., this study (upper bound)",
                                                                     "Savoca et al., this study (best estimate)")), 
@@ -635,7 +666,9 @@ ingest_directpredict_plot <- ggplot(prey_predict_w_M, aes(log10(M_kg), log10(R))
   # annotation_custom(rastMn, xmin = 4.1, xmax = 4.5, ymin = 3.15, ymax = 3.7) +
   # annotation_custom(rastBb, xmin = 3.7, xmax = 3.9, ymin = 2.5, ymax = 3) +
   #ylim(2.5,4.5) +
-  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (R) in kg]", color = "Reference(s)") +
+  scale_x_log10(labels = scales::comma) + 
+  scale_y_log10(labels = scales::comma) +
+  labs(x = "Body mass (kg)", y ="Daily ration (R) in kg", color = "Reference(s)") +
   theme_bw() +
   theme(axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"),
@@ -648,47 +681,55 @@ ingest_directpredict_plot
 dev.copy2pdf(file="Ingest_predict_plot_woSavocaLines.pdf", width=13, height=8)
 
 
-ingest_MSpredict_plot <- ggplot(BMRtoFMRprojection, aes(log10(M_kg), log10(R), color = Species, shape = Species)) +
+ingest_MSpredict_plot <- ggplot(BMRtoFMRprojection, aes(M_kg, R_compressed_120days, color = Species, shape = Species)) +
   geom_point() + 
   #geom_smooth() +
+  scale_x_log10(labels = scales::comma) + 
+  scale_y_log10(labels = scales::comma) +
   scale_colour_manual(values = pal,
                       labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
   scale_shape_manual(values = Shape,
                      labels = c("B. acutorostrata", "B. bonaerensis", "B. borealis", "B. edeni", "B. musculus", "B. physalus", "M. novaeangliae")) +
   #ylim(2.5,4.5) +
-  labs(x = "log[Body mass (kg)]", y ="log[Daily ration (R) in kg]") +
+  labs(x = "Body mass (kg)", y ="MDC (120 days) in kg") +
   theme_bw() +
   theme(axis.text=element_text(size=14),
-        axis.title=element_text(size=16,face="bold"))
+        axis.title=element_text(size=16,face="bold"),
+        legend.text = element_text(face = "italic"))
 ingest_MSpredict_plot
 
 
 # plot of prey consumed per hour (krill only; all deployments >2 hours)
 # Prepare data
+#bb12_214a
+
 Prey_consumpt_hr <- cetacean_data %>% 
-  filter(TotalTagTime_h > 2, SpeciesCode %in% c("bw", "ba", "bp", "mn", "bb") & sonar_exp %in% c("none", NA)) %>%  
-  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E, TotalTagTime_h, `Population estimate`, `Total removed`) %>%
-  gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g)) %>% 
+  filter(TotalTagTime_h > 2, Species %in% c("Balaenoptera musculus", "Balaenoptera physalus", "Megaptera novaeangliae", "Balaenoptera bonaerensis") & sonar_exp %in% c("none", NA)) %>%  
+  select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E, TotalTagTime_h, `Population estimate`, `Total removed`,
+         geoMeanNULL_wt_g_DC, MedNULL_wt_g_DC, geoMeanBOUT_wt_g_DC, MedBOUT_wt_g_DC) %>%
+  gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g,
+                                 geoMeanNULL_wt_g_DC, MedNULL_wt_g_DC, geoMeanBOUT_wt_g_DC, MedBOUT_wt_g_DC)) %>% 
   #  gather(scenario_E, prey_E, c(wgtMeanNULL_E, medNULL_E, wgtMeanBOUT_E, medBOUT_E)) %>%  Switch these as necessary
   mutate(SpeciesCode = substr(ID,1,2), 
         hourly_prey_in_g = prey_wgt_g * feeding_rate,
          hourly_prey_in_kg = hourly_prey_in_g/1000,
-         scenario_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "medNULL_wt_g"), "NULL", "BOUT"),
-         calc_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "wgtMeanBOUT_wt_g"), "mean", "med")) %>% 
+         scenario_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "medNULL_wt_g", "geoMeanNULL_wt_g_DC", "MedNULL_wt_g_DC"), "NULL", "BOUT"),
+         calc_type = ifelse(scenario %in% c("wgtMeanNULL_wt_g", "wgtMeanBOUT_wt_g", "geoMeanNULL_wt_g_DC", "geoMeanBOUT_wt_g_DC"), "mean", "med")) %>% 
   mutate_if(is.character, as.factor) %>% 
   unite("scenario_calc", c("scenario_type", "calc_type"), sep = "_", remove = FALSE)
 Prey_consumpt_hr$SpeciesCode <- sub("ba", "bb", Prey_consumpt_hr$SpeciesCode)
 Prey_consumpt_hr$Species <- sub("Balaenoptera acutorostrata", "Balaenoptera bonaerensis", Prey_consumpt_hr$Species)
 Prey_consumpt_hr <- mutate(Prey_consumpt_hr, Binomial = abbr_binom(Species))
 
-Prey_consumpt_hr %>% group_by(SpeciesCode) %>% summarise(n_distinct(ID)) %>% View
+Prey_consumpt_hr %>% group_by(Species) %>% summarise(n_distinct(ID)) %>% View
 
 #now plot
 pal <- c("ba" = "gold3", "bb" = "firebrick3", "be" = "darkorchid3",  "mn" = "gray30", "bp" = "chocolate3", "bw" = "dodgerblue2" )
 Shape <- c("ba" = 10, "bb" = 15, "be" = 8, "mn" = 17, "bp" = 18, "bw" = 19)
 Prey_consumpt_hr$SpeciesCode <- fct_relevel(Prey_consumpt_hr$SpeciesCode, "bb", "ba","mn","bp","bw")
 
-Prey_consumpt_hr_plot <- ggplot(Prey_consumpt_hr, aes(x = fct_reorder(Binomial, hourly_prey_in_kg, fun = median), 
+Prey_consumpt_hr_plot <- ggplot(filter(Prey_consumpt_hr, scenario %in% c("geoMeanNULL_wt_g_DC", "MedNULL_wt_g_DC", "geoMeanBOUT_wt_g_DC", "MedBOUT_wt_g_DC")), 
+                                aes(x = fct_reorder(Binomial, hourly_prey_in_kg, fun = median), 
                                                       y = hourly_prey_in_kg, 
                                                          color = SpeciesCode, shape = SpeciesCode)) +
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.8, position = position_jitterdodge(jitter.width=0.9)) + 
@@ -715,7 +756,7 @@ prey_summ <- Prey_consumpt_hr %>%
 
 
 #boxplot of prey consumed per day (tags on >24h)
-preyconsumpt_24_deploy <- ggplot(filter(Prey_consumpt_hr, TotalTagTime_h > 24), 
+preyconsumpt_24_deploy <- ggplot(filter(Prey_consumpt_hr, TotalTagTime_h > 24 & scenario %in% c("geoMeanNULL_wt_g_DC", "MedNULL_wt_g_DC", "geoMeanBOUT_wt_g_DC", "MedBOUT_wt_g_DC")), 
                                  aes(x = fct_reorder(Binomial, hourly_prey_in_kg, fun = median), y = hourly_prey_in_kg*24, 
                                                        color = SpeciesCode, shape = SpeciesCode)) +
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.8, position = position_jitterdodge(jitter.width=0.9)) + 
@@ -743,7 +784,7 @@ prey_master_varying_HrperD <- tibble(hours_feeding = seq(1,12,1), dummy = 1) %>%
   select(-dummy) %>% 
   mutate(TotalPreyConsumed_kg = hours_feeding*hourly_prey_in_kg)
 
-prey_HrperDkrill <- ggplot(filter(prey_master_varying_HrperD, TotalTagTime_h > 2),
+prey_HrperDkrill <- ggplot(filter(prey_master_varying_HrperD, TotalTagTime_h > 2 & scenario %in% c("geoMeanNULL_wt_g_DC", "MedNULL_wt_g_DC", "geoMeanBOUT_wt_g_DC", "MedBOUT_wt_g_DC")),
                         aes(x = hours_feeding, y = TotalPreyConsumed_kg, color = SpeciesCode, shape = SpeciesCode)) + 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.3) + 
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), size = 0.5) +
@@ -775,7 +816,7 @@ prey_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1)
   select(-dummy) %>% 
   mutate(TotalAnnualPreyConsumed_kg = days_feeding*TotalPreyConsumed_kg)
 
-prey_DperYrkrill <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
+prey_DperYrkrill <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & scenario %in% c("geoMeanNULL_wt_g_DC", "MedNULL_wt_g_DC", "geoMeanBOUT_wt_g_DC", "MedBOUT_wt_g_DC")),
                         aes(x = days_feeding, y = (TotalAnnualPreyConsumed_kg)/0.83, color = SpeciesCode, shape = SpeciesCode)) +  # multiply by 1.17 to get estimate of MAC, see Eq. (8) 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
   geom_smooth(inherit.aes = T, aes(group = SpeciesCode), color = "black", size = 0.75) +
@@ -800,7 +841,7 @@ prey_DperYrkrill + theme(legend.position="none")
 
 
 # annual amount of krill consumed, current global population, varying days
-prey_DperYrkrill_currentpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
+prey_DperYrkrill_currentpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2& scenario %in% c("geoMeanNULL_wt_g_DC", "MedNULL_wt_g_DC", "geoMeanBOUT_wt_g_DC", "MedBOUT_wt_g_DC")),
                            aes(x = days_feeding, y = (TotalAnnualPreyConsumed_kg/0.83)*`Population estimate`, 
                                color = SpeciesCode, shape = SpeciesCode)) +  # divide by 0.83 to get estimate of MAC, see Eq. (8) 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
@@ -824,7 +865,7 @@ prey_DperYrkrill_currentpop <- ggplot(filter(prey_master_varying_DperYr, hours_f
 prey_DperYrkrill_currentpop + theme(legend.position="none")
 
 # annual amount of krill consumed, population removed by 20th century whaling, varying days
-prey_DperYrkrill_histpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2),
+prey_DperYrkrill_histpop <- ggplot(filter(prey_master_varying_DperYr, hours_feeding %in% (6:12) & TotalTagTime_h > 2 & scenario %in% c("geoMeanNULL_wt_g_DC", "MedNULL_wt_g_DC", "geoMeanBOUT_wt_g_DC", "MedBOUT_wt_g_DC")),
                                       aes(x = days_feeding, y = (TotalAnnualPreyConsumed_kg/0.83)*`Total removed`, 
                                           color = SpeciesCode, shape = SpeciesCode)) +  # divide by 0.83 to get estimate of MAC, see Eq. (8) 
   geom_point(inherit.aes = T, aes(group = SpeciesCode), alpha = 0.2) +
@@ -855,36 +896,47 @@ prey_DperYrkrill_histpop + theme(legend.position="none")
 
 #Prepare data
 Anch_data <- vol_master_data %>% 
-  filter(SpeciesCode == "mn" & PreyClean == "Fish-feeding" & Prey == "Anchovies" & Study_Area %in% c("Monterey", "SoCal")) %>% 
+  filter(SpeciesCode == "mn" & 
+           PreyClean == "Fish-feeding" & 
+           Prey == "Anchovies" & 
+           TotalLunges > 0 &
+           TotalTagTime_h > 2 & 
+           Study_Area %in% c("Monterey", "SoCal")) %>% 
   mutate(Med_Recalc_m3 = Med_Recalc_L/1000,
          EngulfVolPerHr_m3 = LungesPerDayHour*Med_Recalc_m3,
-         Max_anch_mouthful_kg = EngulfVolPerHr_m3*7.8,
-         Max_anch_perhour_kg = Max_anch_mouthful_kg*LungesPerDayHour)
+         MaxAnchEngulfperHr_kg = EngulfVolPerHr_m3*7.8,
+         AnchEngulfperHr_kg = MaxAnchEngulfperHr_kg*0.4*0.29) # due to 40% catch efficiency, 29% because anchovy school size is 29% of full engulfment size
+Anch_data$LungesPerDayHour[is.nan(Anch_data$LungesPerDayHour)] <- NA
+
+Anch_data %>% 
+  summarise(AvgEngulf = mean(EmpEngulfCap))
+  
 Anch_data_for_join <- Anch_data %>% 
   mutate(dummy = 1)
 Anch_master_varying_HrperD <- tibble(hours_feeding = seq(1,12,1), dummy = 1) %>% 
   full_join(Anch_data_for_join, by = "dummy") %>% 
   select(-dummy) %>% 
-  filter(TotalTagTime_h > 2 & TotalLunges > 0) %>% 
-  mutate(MaxDailyAnchConsumed_kg = hours_feeding*Max_anch_perhour_kg)
+  mutate(MaxDailyAnchConsumed_kg = hours_feeding*MaxAnchEngulfperHr_kg,
+         AnchEngulfperDay_kg = hours_feeding*AnchEngulfperHr_kg)
 
 pal <- c("ba" = "gold3", "bb" = "firebrick3", "be" = "darkorchid3",  "mn" = "gray30", "bp" = "chocolate3", "bw" = "dodgerblue2" )
 Shape <- c("ba" = 10, "bb" = 15, "be" = 8, "mn" = 17, "bp" = 18, "bw" = 19)
 
-Anch_consumpt_hr_plot <- ggplot(Anch_master_varying_HrperD, aes(x = hours_feeding, y = MaxDailyAnchConsumed_kg*0.4)) +
+Anch_consumpt_hr_plot <- ggplot(Anch_master_varying_HrperD, aes(x = hours_feeding, y = AnchEngulfperDay_kg)) +
   geom_point(color = "gray30", shape = 17, alpha = 0.8) + 
   geom_smooth(inherit.aes = T, color = "blue", size = 0.75) +
   scale_x_continuous(breaks=seq(0, 12, 2)) +
-  scale_y_log10(labels = scales::comma) + 
+  #scale_y_log10(labels = scales::comma) + 
   xlab("Daytime hours feeding") + ylab("Anchovy consumption per day (kg)") + 
-  ggtitle("Humpback whale anchovy consumption (all deployments >2 hours)") +
+  #ggtitle("Humpback whale anchovy consumption (all deployments >2 hours)") +
+  scale_y_log10(labels = scales::comma) + 
   theme_bw() +
   theme(axis.text = element_text(size=12),
         axis.title=element_text(size=13, face="bold"),
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"))
 Anch_consumpt_hr_plot + theme(legend.position="none")
   
-Anch_master_for_year_join <- Anch_master_varying_HrperD %>% 
+ Anch_master_for_year_join <- Anch_master_varying_HrperD %>% 
   mutate(dummy = 1)
 Anch_master_varying_DperYr <- tibble(days_feeding = seq(60,182.5,10), dummy = 1) %>% 
   full_join(Anch_master_for_year_join, by = "dummy") %>% 
@@ -896,18 +948,22 @@ Anch_consumpt_yr_plot <- ggplot(filter(Anch_master_varying_DperYr, hours_feeding
                                 aes(x = days_feeding, y = MaxAnnualAnchConsumed_kg*0.4)) +
   geom_point(color = "gray30", shape = 17, alpha = 0.8) + 
   geom_smooth(inherit.aes = T, color = "blue", size = 0.75) +
-  scale_y_log10(labels = scales::comma) + 
+ # scale_y_log10(labels = scales::comma) + 
   xlab("Days feeding") + ylab("Anchovy consumption per year (kg)") + 
+  scale_y_log10(labels = scales::comma) + 
   theme_bw() +
   theme(axis.text = element_text(size=12),
         axis.title=element_text(size=13, face="bold"),
         plot.title = element_text(hjust = 0.5, size = 14, face="bold"))
 Anch_consumpt_yr_plot + theme(legend.position="none")
 
-ggarrange(Anch_consumpt_hr_plot, Anch_consumpt_yr_plot, 
-          labels = c("A", "B"), # THIS IS SO COOL!!
-          legend = "none",
-          ncol = 1, nrow = 2)
+Anch_combined_plot <- ggarrange(Anch_consumpt_hr_plot, Anch_consumpt_yr_plot, 
+                                labels = c("A", "B"), # THIS IS SO COOL!!
+                                legend = "none",
+                                ncol = 2, nrow = 1)
+annotate_figure(Anch_combined_plot,
+                top = text_grob("Humpback whale anchovy consumption (all deployments >2 hours)", 
+                                face = "bold", size = 14))
 
 #################################################################################
 # for funsies, some back of the envelope calcs on filtraton capacity comparisons:
@@ -920,11 +976,12 @@ ggarrange(Anch_consumpt_hr_plot, Anch_consumpt_yr_plot,
 # for the world's oceans, see: https://www.ngdc.noaa.gov/mgg/global/etopo1_ocean_volumes.html
 
 # in the Southern Ocean
-(71800000*0.1)*1000000000000  # total volume in L of water in the upper 10% of water column (~327m) Southern Ocean 
+(71800000*0.1)*1000000000000  # total volume in L of water in the upper 10% of water column (~369m) Southern Ocean 
 2000*12000000 # approximate amount of water filtered per day by current population of Southern Ocean blue whales 
 350000*12000000 # approximate amount of water filtered per day by pre-exploitation population of Southern Ocean blue whales 
 750000*12000000 # approximate amount of water filtered per day by pre-exploitation population of Southern Ocean fin whales 
 ((4.2e+12 + 9e+12)*120/7.18e+18)*100 # Percentage of the upper 327m of the Southern Ocean that the pre-exploitation population of blue and fin whales 
+# the whales removed from the Southern Ocean could filter the equivalent of the top ~369m of the water in the Souther Ocean in ~1000 years
 
 
 # for the Great Lakes, see: https://www.glerl.noaa.gov/education/ourlakes/lakes.html
