@@ -127,17 +127,17 @@ sims_summ <- summarize_at(sims, vars(E_preyseason), list(mean, sd, median, min, 
 
 
 # Morphometric data (from Shirel's paper)
-v_data <- read_excel("mwmrmeasures.xlsx") %>% 
-  select(1:3) %>% 
-  group_by(Species) %>% 
-  summarize(med_TLm = median(TLm)) %>% 
-  rename(CommonName = Species)
-# v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
+# v_data <- read_excel("mwmrmeasures.xlsx") %>% 
+#   select(1:3) %>% 
+#   group_by(Species) %>% 
+#   dplyr::summarize(med_TLm = median(TLm)) %>% 
+#   rename(`CommonName` = Species)
+# # v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
 
 # Allometric equations from Shirel's paper
 # creating fucntions from Shirel's paper for MW (in kg) for engulfment capacity in liters for each species where we have a known length
 engulf_allo <- tribble(
-  ~Species, ~slope,   ~intercept,
+  ~SpeciesCode, ~slope,   ~intercept,
   "bb",     3.10910,  0.69969,
   "be",     3.1453,   0.5787,
   "bp",     3.54883,  0.15604,
@@ -150,24 +150,24 @@ tag_guide <- read_excel("TAG GUIDE_2.18.19.xlsx", skip = 2) %>%
   rename(Study_Area = `Study_Area     _`)
 
 #joining f_data and tag guide to have location data
-f_data <- read_excel("ALLPRHS 2.5.2019.xls") %>% 
+fv_data <- read_excel("ALLPRHS 2.5.2019.xls") %>% 
   left_join(select(tag_guide, ID, Study_Area), by = "ID") %>% 
   # Replace NAs in location with "SoCal"
   mutate(Study_Area = replace_na(Study_Area, "SoCal"),
          # Make whale length a number
          whaleLength = parse_number(whaleLength),
          # First two chars of ID is the species code Note: ba/bb confusion
-         Species = substr(ID, 1, 2),
-         CommonName = case_when(Species == "bw" ~ "Blue Whale",
-                                Species == "bp" ~ "Fin Whale",
-                                Species == "mn" ~ "Humpback Whale",
-                                Species %in% c("ba", "bb") ~ "Minke Whale", 
+         SpeciesCode = substr(ID, 1, 2),
+         CommonName = case_when(SpeciesCode == "bw" ~ "Blue Whale",
+                                SpeciesCode == "bp" ~ "Fin Whale",
+                                SpeciesCode == "mn" ~ "Humpback Whale",
+                                SpeciesCode %in% c("ba", "bb") ~ "Minke Whale", 
                                 TRUE ~ "Bryde's Whale")) %>% 
   select(-notes) %>% 
   # Join species-median size data
   left_join(v_data, by = "CommonName") %>% 
   # Join allometric equations
-  left_join(engulf_allo, by = "Species") %>% 
+  left_join(engulf_allo, by = "SpeciesCode") %>% 
   # Calculate engulfment volumes
   mutate(BestLengthEst = coalesce(whaleLength, med_TLm),
          Engulfment_L = BestLengthEst ^ slope * 10 ^ intercept * 0.9766,
@@ -219,13 +219,13 @@ f_data <- read_excel("ALLPRHS 2.5.2019.xls") %>%
 #                                  ifelse(v_data$CommonName == "Humpback Whale", mn_L(v_data$TLm),
 #                                         ifelse(v_data$CommonName == "Minke Whale", ba_L(v_data$TLm), be_L(v_data$TLm)))))
 
-# # create table looking at averages of MW 
-# v_data_species <- v_data %>% group_by(CommonName) %>% 
-#   summarize(Mean_L = mean(L), Mean_Recalc_L = mean(Recalc_L), 
-#             Med_L = median(L), Med_Recalc_L = median(Recalc_L), 
-#             Mean_TL = mean(TLm), Med_TL = median(TLm))
+# # # create table looking at averages of MW 
+v_data_species <- v_data %>%  group_by(CommonName) %>% 
+  dplyr::summarize(Mean_L = mean(L), Mean_Recalc_L = mean(Recalc_L), 
+            Med_L = median(L), Med_Recalc_L = median(Recalc_L), 
+            Mean_TL = mean(TLm), Med_TL = median(TLm))
 
-# v_data <- left_join(v_data, v_data_species, by = "CommonName") 
+v_data <- left_join(v_data, v_data_species, by = "CommonName") 
 
 
 
@@ -256,14 +256,13 @@ d_full_BOUT <- read_csv("Cetacea model output BOUT_EXTANT.csv") %>%
   mutate(Species = ifelse(Species == "bonarensis", "bonaerensis", Species))
 
 RorqualData <- read_csv("lunge_rates_from_Paolo.csv") %>% 
- left_join(f_data, by= "ID") %>% 
+ left_join(fv_data, by= "ID") %>% 
   mutate(`deployment-time_h` = `deployment-time_secs`/60/60,
          SpeciesCode = substr(ID,1,2),)  %>% 
   select(-c(species)) %>% 
   arrange(dayhours, ID)
 
 write_csv(RorqualData, path = "RorqualDataforTimeDay.csv")
-
 
 
 # # sweet tidy code from Max
@@ -295,11 +294,9 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = c("ID")) %>%
   # feeding events are lunges, buzzes for rorquals, odontocetes
   mutate(TotalFeedingEvents = coalesce(total_lunges, total_buzz_count),
          TotalTagTime_h = coalesce(`deployment-time_h`, total_duration_h)) %>% 
-  left_join(v_data_species, by = "CommonName") %>% 
-  mutate(EngulfVolPerHr = LungesPerHour*Engulfment_L,
-         EngulfVolPerDayHr = LungesPerDayHour*Engulfment_L) %>% 
-  select(-c(Med_L, Mean_L)) %>% 
-  left_join(pop_data, by = "SpeciesCode") %>% 
+  # left_join(v_data_species, by = "CommonName") %>% 
+  # select(-c(Med_L, Mean_L)) %>% 
+  left_join(pop_data, by = "Species") %>% 
   #drop_na(Species) %>% 
   mutate(feeding_rate = TotalFeedingEvents / TotalTagTime_h,    # FEEDING RATE
          SpeciesCode = substr(ID,1,2),
@@ -324,11 +321,8 @@ cetacean_data <- left_join(OdontoceteData, RorqualData, by = c("ID")) %>%
            Species =="Megaptera novaeangliae" ~ 1.519911083*25683.815,
            Species =="Balaenoptera bonaerensis" ~ 0.572236766*3069.295)
          )      
-  #rename(Species = Species.y)
 cetacean_data$SpeciesCode <- sub("ba", "bb", cetacean_data$SpeciesCode)
 cetacean_data$Species <- sub("Balaenoptera acutorostrata", "Balaenoptera bonaerensis", cetacean_data$Species)
-
-a= left_join(cetacean_data, f_data, by = "ID")
 
 
 # 
@@ -351,34 +345,54 @@ a= left_join(cetacean_data, f_data, by = "ID")
 cetacean_data$total_lunges <- as.double(cetacean_data$total_lunges) # need to do this conversion for coalesce to work below
 vol_master_data <- cetacean_data %>%
   filter(SpeciesCode %in% c("bw", "bp", "mn", "bb", "be")) %>% 
-  select(-Species.y) %>% 
-  select(ID, Species, Body_length_m, TotalTagTime_h, feeding_rate, total_lunges, EngulfVolPerHr, EngulfVolPerDayHr, sonar_exp) %>% 
+  select(ID, Species,SpeciesCode, Body_length_m, TotalTagTime_h, feeding_rate, total_lunges, sonar_exp) %>% 
   full_join(fv_data, by = "ID") %>% 
-  mutate(LungesPerHour = coalesce(feeding_rate, LungesPerHour),
+  mutate(Study_Area = replace_na(Study_Area, "SoCal"),
+         SpeciesCode = coalesce(SpeciesCode.x, SpeciesCode.y),
+          # First two chars of ID is the species code Note: ba/bb confusion
+         CommonName = case_when(SpeciesCode == "bw" ~ "Blue Whale",
+                                SpeciesCode == "bp" ~ "Fin Whale",
+                                SpeciesCode == "mn" ~ "Humpback Whale",
+                                SpeciesCode %in% c("ba", "bb") ~ "Minke Whale", 
+                                TRUE ~ "Bryde's Whale"),
+         LungesPerHour = coalesce(feeding_rate, LungesPerHour),
          TotalTagTime_h = coalesce(TotalTagTime_h, TotalHours),
          TotalLunges = coalesce(TotalLunges, total_lunges),  
-         SpeciesCode = substr(ID,1,2),
          AvgLength = case_when(SpeciesCode == "bw" ~ 25.2,
                                SpeciesCode == "bp" ~ 20.2,
                                SpeciesCode == "mn" ~ 14,
                                SpeciesCode == "be" ~ 14.5, 
                                SpeciesCode %in% c("ba","bb") ~ 7.8),
-         MW_est_L = case_when(SpeciesCode == "bw" ~ bw_L(AvgLength),
-                              SpeciesCode == "bp" ~ bp_L(AvgLength),
-                              SpeciesCode == "mn" ~ mn_L(AvgLength),
-                              SpeciesCode == "be" ~ be_L(AvgLength), 
-                              SpeciesCode %in% c("ba","bb") ~ ba_L(AvgLength))) %>% 
-  sonar_exp = replace_na(sonar_exp, "none"),
-  PreyClean = replace_na(PreyClean, "Krill-feeding") %>% 
-  left_join(pop_data, by = "SpeciesCode") %>% 
-  select(-c(Index, Species, Body_length_m, TotalHours, total_lunges, feeding_rate, TagOn, TagOff, `Prey notes`, `Current Range`, Species.x,
-            `Number removed by 20th century whaling (N. Hemisphere)`, `Number removed by 20th century whaling (S. Hemisphere)`)) %>% 
-  rename(Species = Species.y)
+         # MW_est_L = case_when(SpeciesCode == "bw" ~ bw_L(AvgLength),
+         #                      SpeciesCode == "bp" ~ bp_L(AvgLength),
+         #                      SpeciesCode == "mn" ~ mn_L(AvgLength),
+         #                      SpeciesCode == "be" ~ be_L(AvgLength), 
+         #                      SpeciesCode %in% c("ba","bb") ~ ba_L(AvgLength)), 
+         sonar_exp = replace_na(sonar_exp, "none"), 
+         PreyClean = replace_na(PreyClean, "Krill-feeding"),
+         BestLengthEst = coalesce(whaleLength, AvgLength),
+         Engulfment_L = BestLengthEst ^ slope * 10 ^ intercept * 0.9766,
+         # Feeding rates
+         TotalLunges = dayhourslunges + nighthourslunges + twilightzonelunges,
+         TotalHours = dayhours + nighthours + twilightzone,
+         LungesPerHour = TotalLunges/TotalHours,
+         LungesPerDayHour = dayhourslunges/dayhours,
+         LungesPerNightHour = nighthourslunges/nighthours,
+         LungesPerTwHour = twilightzonelunges/twilightzone, 
+         EngulfVolPerHr = LungesPerHour*Engulfment_L,
+         EngulfVolPerDayHr = LungesPerDayHour*Engulfment_L) %>% 
+  left_join(pop_data, by = "Species") %>% 
+  select(-c(Index, Body_length_m, TotalHours, total_lunges, feeding_rate, TagOn, TagOff, `Prey notes`, `Current Range`,
+            `Number removed by 20th century whaling (N. Hemisphere)`, `Number removed by 20th century whaling (S. Hemisphere)`, 
+            SpeciesCode.x.x, SpeciesCode.y, SpeciesCode.y.y)) %>% 
+  rename(SpeciesCode = SpeciesCode.x)
+
+
 vol_master_data$SpeciesCode <- sub("ba", "bb", vol_master_data$SpeciesCode)
 
 
 # View summary info on how many tags in this dataset
-vol_master_data %>% group_by(SpeciesCode) %>% 
+vol_master_data %>% group_by(Species) %>% 
   filter(TotalTagTime_h > 2 & TotalLunges > 0 & sonar_exp %in% c("none", NA)) %>% 
   summarize(n_distinct(ID),
             meanVFD = mean(EngulfVolPerHr*24),
@@ -721,7 +735,9 @@ ingest_MSpredict_plot
 #bb12_214a
 
 Prey_consumpt_hr <- cetacean_data %>% 
-  filter(TotalTagTime_h > 2, Species %in% c("Balaenoptera musculus", "Balaenoptera physalus", "Megaptera novaeangliae", "Balaenoptera bonaerensis") & sonar_exp %in% c("none", NA)) %>%  
+  filter(TotalTagTime_h > 2, 
+         paste(Genus, Species) %in% c("Balaenoptera musculus", "Balaenoptera physalus", "Megaptera novaeangliae", "Balaenoptera bonaerensis"),
+         sonar_exp %in% c("none", NA)) %>%  
   select(ID, Species, feeding_rate, wgtMeanNULL_wt_g:medBOUT_E, TotalTagTime_h, `Population estimate`, `Total removed`,
          geoMeanNULL_wt_g_DC, MedNULL_wt_g_DC, geoMeanBOUT_wt_g_DC, MedBOUT_wt_g_DC) %>%
   gather(scenario, prey_wgt_g, c(wgtMeanNULL_wt_g, medNULL_wt_g, wgtMeanBOUT_wt_g, medBOUT_wt_g,
