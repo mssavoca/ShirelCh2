@@ -30,30 +30,20 @@ log_labels <- trans_format("log10", math_format(10^.x))
 
 # Parameter CDFs
 # rf (Empirical)
-# Quantiles of the empirical feed rate distribution
-fc_q <- transmute(vol_master_data,
+# Quantiles of the empirical feed rate distribution and engulfment capacity
+filtration_q <- transmute(vol_master_data,
                   ID, 
-                  Species, 
-                  fc_h = LungesPerHour) %>% 
-  drop_na %>% 
-  group_by(Species) %>% 
-  group_map(~ tibble(q_fc = list(function(p, ...) quantile(.x$fc_h, p)))) %>% 
-  ungroup
-
-ggplot(tibble(x= seq(0.01, 0.99, length.out = 100), 
-              y = fc_q$q_fc[[1]](x)), 
-       aes(y,x)) + 
-  geom_line()
-
-# Quantiles of the empirical feed rate distribution
-en_q <- transmute(vol_master_data,
-                  ID, 
-                  Species, 
+                  SpeciesCode, 
+                  fc_h = LungesPerHour, 
                   en_L = Engulfment_L) %>% 
   drop_na %>% 
-  group_by(Species) %>% 
-  group_map(~ tibble(q_rf = list(function(p, ...) quantile(.x$en_L, p)))) %>% 
+  group_by(SpeciesCode) %>% 
+  group_map(~ tibble(q_fc = list(function(p, ...) quantile(.x$fc_h, p)),
+                     q_en = list(function(p, ...) quantile(.x$en_L, p)))) %>% 
   ungroup
+
+
+
 
 # My filt cap model will be: VFD = hours feeding*feeding rate*pouch size (Mw)*pouch fullness
 
@@ -68,61 +58,66 @@ VFD_fun <- function(vol_master_varying_HrperD) {            # HOW TO VARY BY FIS
   )
 }
 
-VFD_fun <- function(hours_feeding, LungesPerHour, Engulfment_L, p_full) {
-  hours_feeding * LungesPerHour * Engulfment_L * p_full
-}
+# VFD_fun <- function(hours_feeding, LungesPerHour, Engulfment_L, p_full) {
+#   hours_feeding * LungesPerHour * Engulfment_L * p_full
+# }
+
+filtration_q %>% 
+  group_by(SpeciesCode) %>% 
+  group_map(function(data, key) {
+    # Sensitivity analysis using pse package
+    
+    # List of model parameters
+    param <- c("hours_feeding" , "LungesPerHour" , "Engulfment_L" , "p_full")
+    # List of parameter distribution functions
+    q <- list(hours_feeding = qunif, 
+              LungesPerHour = data$q_fc[[1]],
+              Engulfment_L = data$q_en[[1]],
+              p_full = qunif)
+    # List of distribution function parameters
+    q_arg <- list(hours_feeding = list(min = 1, max = 12),
+                  LungesPerHour = list(),
+                  Engulfment_L = list(),
+                  p_full = list(min = 0.5, max = 1))
+    
+    # latin hypercube sample of parameter space
+    filtration_LHS <- pse::LHS(VFD_fun, param, 200, q, q_arg)
+    
+    SA_result <- filtration_LHS$data %>% 
+      mutate(VFD_L = filtration_LHS$res[,1,1])
+    
+    # Scatter
+    SA_result %>% 
+      gather(param, value, hours_feeding:p_full) %>%
+      ggplot(aes(value, VFD_L)) +
+      geom_point() +
+      geom_smooth(method = "lm", se = FALSE) +
+      facet_wrap(~ param, scales = "free_x") +
+      labs(title = key$SpeciesCode) +
+      theme_minimal()
+    ggsave(sprintf("figs/filtration_SA/%s_scatter.pdf", key$SpeciesCode),
+           width = 9,
+           height = 6)
+    
+    # ECDF
+    SA_result %>% 
+      ggplot(aes(VFD_L)) +
+      stat_ecdf() +
+      geom_vline(xintercept = mean(SA_result$VFD_L),
+                 linetype = "dashed") +
+      labs(title = key$SpeciesCode) +
+      theme_minimal() 
+    ggsave(sprintf("figs/filtration_SA/%s_ecdf.pdf", key$SpeciesCode),
+           width = 9,
+           height = 6)
+    
+    tibble(mean_VFD = mean(SA_result$VFD_L),
+           median_VFD = median(SA_result$VFD_L),
+           iqr_VFD = IQR(SA_result$VFD_L))
+  })
 
 
-# Sensitivity analysis using pse package
 
-# List of model parameters
-param <- c("hours_feeding" , "LungesPerHour" , "Engulfment_L" , "p_full")
-# List of parameter distribution functions
-q <- list(hours_feeding = qunif, 
-          LungesPerHour = data$fc_q[[1]],
-          Engulfment_L = data$en_q[[1]],
-          p_full = qunif)
-# List of distribution function parameters
-q_arg <- list(hours_feeding = list(min = 1, max = 12),
-              LungesPerHour = list(),
-              Engulfment_L = list(),
-              p_full = list(min = 0.5, max = 1))
-
-# latin hypercube sample of parameter space
-filtration_LHS <- pse::LHS(VFD_fun, param, 200, q, q_arg)
-
-SA_result <- feeding_LHS$data %>% 
-  mutate(VFD_L = filtration_LHS$res[,1,1])
-
-# Scatter
-SA_result %>% 
-  gather(param, value, hours_feeding:p_full) %>%
-  ggplot(aes(value, VFD_L)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE) +
-  facet_wrap(~ param, scales = "free_x") +
-  labs(title = key$Species) +
-  theme_minimal()
-ggsave(sprintf("figs/filtration_SA/%s_scatter.pdf", key$Species),
-       width = 9,
-       height = 6)
-
-# ECDF
-SA_result %>% 
-  ggplot(aes(MDC_kg)) +
-  stat_ecdf() +
-  geom_vline(xintercept = mean(SA_result$VFD_L),
-             linetype = "dashed") +
-  labs(title = key$Species) +
-  theme_minimal() 
-ggsave(sprintf("figs/feeding_SA/%s_ecdf.pdf", key$Species),
-       width = 9,
-       height = 6)
-
-tibble(mean_VFD = mean(SA_result$VFD_L),
-       median_VFD = median(SA_result$VFD_L),
-       iqr_VFD = IQR(SA_result$VFD_L))
-})
 
 
 
@@ -134,16 +129,18 @@ tibble(mean_VFD = mean(SA_result$VFD_L),
 # Quantiles of the empirical feed rate distribution
 rf_q <- transmute(Prey_consumpt_hr,
                   ID, 
-                  Species, 
+                  SpeciesCode, 
                   rf_h = feeding_rate) %>% 
   drop_na %>% 
-  group_by(Species) %>% 
-  group_map(~ tibble(q_rf = list(function(p, ...) quantile(.x$rf_h, p)))) %>% 
+  group_by(SpeciesCode) %>% 
+  group_map(~ tibble(q_rf = list(function(p, ...) quantile(.x$rf_h, p)),
+                     min_prey_wt = min(prey_wgt_g, na.rm = TRUE),
+                     max_prey_wt = max(prey_wgt_g, na.rm = TRUE))) %>% 
   ungroup
 
 #create min max table of prey weight
 prey_wt_range <- Prey_consumpt_hr %>% 
-  group_by(Species) %>% 
+  group_by(SpeciesCode) %>% 
   summarise(min_prey_wt = min(prey_wgt_g, na.rm = TRUE),
             max_prey_wt = max(prey_wgt_g, na.rm = TRUE))
 
@@ -161,17 +158,11 @@ MDC_krill_fun <- function(prey_master_varying_HrperD) {
 }
 
 
-my_tbl <- tibble(x = rep(1:5, each = 3), y = runif(15), z = runif(15))
-my_subset <- filter(my_tbl, x == 1)
-my_fun <- function(my_data) {
-  tibble(N = length(my_data$y))
-}
-
 # Sensitivity analysis using pse package
-feeding_data <- left_join(rf_q, prey_wt_range, by = "Species")
+feeding_data <- left_join(rf_q, prey_wt_range, by = "SpeciesCode")
 
 feeding_data %>% 
-  group_by(Species) %>% 
+  group_by(SpeciesCode) %>% 
   group_map(function(data, key) {
     # List of model parameters
     param <- c("hours_feeding", "feeding_rate", "p_wt", "p_full")
@@ -199,9 +190,9 @@ feeding_data %>%
       geom_point() +
       geom_smooth(method = "lm", se = FALSE) +
       facet_wrap(~ param, scales = "free_x") +
-      labs(title = key$Species) +
+      labs(title = key$SpeciesCode) +
       theme_minimal()
-    ggsave(sprintf("figs/feeding_SA/%s_scatter.pdf", key$Species),
+    ggsave(sprintf("figs/feeding_SA/%s_scatter.pdf", key$SpeciesCode),
            width = 9,
            height = 6)
     
@@ -211,9 +202,9 @@ feeding_data %>%
       stat_ecdf() +
       geom_vline(xintercept = mean(SA_result$MDC_kg),
                  linetype = "dashed") +
-      labs(title = key$Species) +
+      labs(title = key$SpeciesCode) +
       theme_minimal() 
-    ggsave(sprintf("figs/feeding_SA/%s_ecdf.pdf", key$Species),
+    ggsave(sprintf("figs/feeding_SA/%s_ecdf.pdf", key$SpeciesCode),
            width = 9,
            height = 6)
     

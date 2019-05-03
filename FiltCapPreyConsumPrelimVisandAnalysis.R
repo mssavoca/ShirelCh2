@@ -127,11 +127,11 @@ sims_summ <- summarize_at(sims, vars(E_preyseason), list(mean, sd, median, min, 
 
 
 # Morphometric data (from Shirel's paper)
-# v_data <- read_excel("mwmrmeasures.xlsx") %>% 
-#   select(1:3) %>% 
-#   group_by(Species) %>% 
-#   dplyr::summarize(med_TLm = median(TLm)) %>% 
-#   rename(`CommonName` = Species)
+v_data <- read_excel("mwmrmeasures.xlsx") %>% 
+   select(1:3) %>% 
+   group_by(Species) %>% 
+   dplyr::summarize(med_TLm = median(TLm)) %>% 
+   rename(`CommonName` = Species)
 # # v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
 
 # Allometric equations from Shirel's paper
@@ -784,7 +784,7 @@ Prey_consumpt_hr_plot + theme(legend.position="none")
 #summary table for results section
 prey_summ <- Prey_consumpt_hr %>% 
   group_by(Species, scenario_calc) %>% 
-  summarize(MeanKrillConsumed_kg = mean(hourly_prey_in_kg),
+  dplyr::summarize(MeanKrillConsumed_kg = mean(hourly_prey_in_kg),
             SEMeanKrillConsumed_kg = SE(hourly_prey_in_kg))
 
 
