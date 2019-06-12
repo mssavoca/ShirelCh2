@@ -186,6 +186,7 @@ master_filtprey_data <- read_excel("ALLPRHS 2.5.2019.xls") %>%
 
 
 
+write_csv(master_filtprey_data, "Deployments and data for filtprey analyses.csv")
 
 
 # preliminary plots for filtration capacity ----
