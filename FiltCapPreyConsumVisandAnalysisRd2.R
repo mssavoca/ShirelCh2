@@ -33,8 +33,7 @@ abbr_binom = function(binom) {
 
 
 # Species-specific average length data (from Shirel's paper), to recalculate average engulfment capacity
-v_data <- read_excel("mwmrmeasures.xlsx") %>% 
-  select(1:3) %>% 
+v_data <- read_csv("MWmeasurements.csv") %>% 
   group_by(Species) %>% 
   dplyr::summarize(med_TLm = median(TLm)) %>% 
   rename(CommonName = Species) %>% 
@@ -421,14 +420,6 @@ ggarrange(v_DperYrfish_currentpop, v_DperYrkrill_currentpop,
           labels = c("A", "B"), # THIS IS SO COOL!!
           legend = "none",
           ncol = 1, nrow = 2)
-
-
-
-
-
-
-
-
 
 
 

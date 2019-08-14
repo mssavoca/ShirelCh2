@@ -105,7 +105,7 @@ filtration_q %>%
       stat_ecdf() +
       geom_vline(xintercept = mean(SA_result$VFD_L),
                  linetype = "dashed") +
-      labs(title = key$SpeciesCode) +
+      labs(title = key$SpeciesCode) +s
       theme_minimal() 
     ggsave(sprintf("figs/filtration_SA/%s_ecdf.pdf", key$SpeciesCode),
            width = 9,
