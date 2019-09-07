@@ -163,46 +163,88 @@ sample_rates <- function(rows, keys){
       sample(x, prob = prob, size = size, replace = replace)
     }
   }
+  
+  mass_per_day <- function(rate, capacity, lnmean, lnsd) {
+    densities <- rlnorm(rate, lnmean, lnsd)
+    sum(capacity * densities)
+  }
+  
   result <- tibble(day_rate = sample2(rows_wide$Rate_Day, prob = rows_wide$`Time (hours)_Day`, size = 1e4, replace = TRUE),
                    tw_rate = sample2(rows_wide$Rate_Twilight, prob = rows_wide$`Time (hours)_Twilight`, size = 1e4, replace = TRUE),
                    night_rate = sample2(rows_wide$Rate_Night, prob = rows_wide$`Time (hours)_Night`, size = 1e4, replace = TRUE),
-                   daily_rate = day_rate*16 + tw_rate*2 + night_rate *6,
+                   daily_rate = floor(day_rate*14 + tw_rate*3 + night_rate *7),
                    length_distrib = sample(na.omit(rows_wide$whaleLength), size = 1e4, replace = TRUE),
                    slope = rows$slope[1],
                    intercept = rows$intercept[1],
-                   sp_sp_prey_mass_per_m3 = rlnorm(1e4, rows$ln_mean, rows$ln_sd))
+                   measured_engulfment_cap_m3 = (length_distrib ^ slope * 10 ^ intercept * 0.9766)/1000,
+                   prey_mass_per_day_kg = map2_dbl(daily_rate, measured_engulfment_cap_m3, mass_per_day, lnmean = rows$ln_mean[1], lnsd = rows$ln_sd[1]),
+                   prey_mass_per_lunge = prey_mass_per_day_kg / daily_rate)
 }
-
 
 d_strapped <- filtration_master %>% 
   filter(prey_general == "Krill") %>% 
   group_by(Species) %>% 
-  group_modify(sample_rates) %>% 
-  mutate(measured_engulfment_cap_m3 = (length_distrib ^ slope * 10 ^ intercept * 0.9766)/1000,
-         prey_mass_per_lunge = sp_sp_prey_mass_per_m3*measured_engulfment_cap_m3,
-         prey_mass_per_day_kg = prey_mass_per_lunge*daily_rate)
+  group_modify(sample_rates)
 
 
-# feeding rates plots ----
+
+
+
+
+# preliminary plots ----
 pal <- c("B. bonaerensis" = "firebrick3", "B. edeni" = "darkorchid3",  "M. novaeangliae" = "gray30", "B. physalus" = "chocolate3", "B. musculus" = "dodgerblue2")
 
-ENP_daily_rate <- ggplot(d_strapped, 
-                         aes(x = abbr_binom(Species), y = daily_rate, fill = abbr_binom(Species))) +
+
+Measured_length <- ggplot(d_strapped, 
+                     aes(x = fct_reorder(abbr_binom(Species), length_distrib), y = length_distrib, 
+                         fill = abbr_binom(Species))) +
   geom_flat_violin(position = position_nudge(x = 0.1, y = 0), alpha = .8) +
   geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
   coord_flip() + 
   scale_fill_manual(values = pal) +
   labs(x = "Species",
+       y = "Measured length (m)") + 
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none",
+        axis.text.y = element_text(face = "italic"))
+Measured_length
+
+Daily_rate <- ggplot(d_strapped, 
+                         aes(x = fct_reorder(abbr_binom(Species), daily_rate), y = daily_rate, 
+                             fill = abbr_binom(Species))) +
+  geom_flat_violin(position = position_nudge(x = 0.1, y = 0), alpha = .8) +
+  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  coord_flip() + 
+  scale_fill_manual(values = pal) +
+  scale_y_continuous(breaks = seq(from = 0, to = 2500, by = 500)) +
+  labs(x = "Species",
        y = "Lunges per day") + 
   theme_classic(base_size = 14) +
-  theme(legend.position = "none")
-ENP_daily_rate
+  theme(legend.position = "none",
+        axis.text.y = element_text(face = "italic"))
+Daily_rate
 
 
-
-ENP_daily_biomass_ingested <- ggplot(d_strapped, 
-                         aes(x = abbr_binom(Species), y = prey_mass_per_day_kg/1000, fill = abbr_binom(Species))) +
+Daily_filtration <- ggplot(d_strapped, 
+                     aes(x = fct_reorder(abbr_binom(Species), measured_engulfment_cap_m3*daily_rate), y = measured_engulfment_cap_m3*daily_rate, 
+                         fill = abbr_binom(Species))) +
   geom_flat_violin(position = position_nudge(x = 0.1, y = 0), alpha = .8) +
+  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  coord_flip() + 
+  scale_fill_manual(values = pal) +
+  ylim(0,60000) +
+  labs(x = "Species",
+       y = "Water volume filtered per day (cubic meters)") + 
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none",
+        axis.text.y = element_text(face = "italic"))
+Daily_filtration
+
+
+Daily_biomass_ingested <- ggplot(d_strapped, 
+                         aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_kg), y = prey_mass_per_day_kg/1000, 
+                             fill = abbr_binom(Species))) +
+  geom_flat_violin(position = position_nudge(x = 0.1, y = 0), alpha = .8, adjust = 2) +
   geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
   ylim(0,50) +
   coord_flip() + 
@@ -210,8 +252,9 @@ ENP_daily_biomass_ingested <- ggplot(d_strapped,
   labs(x = "Species",
        y = "Tonnes of prey consumed per day") + 
   theme_classic(base_size = 14) +
-  theme(legend.position = "none")
-ENP_daily_biomass_ingested
+  theme(legend.position = "none",
+        axis.text.y = element_text(face = "italic"))
+Daily_biomass_ingested
 
 
 
