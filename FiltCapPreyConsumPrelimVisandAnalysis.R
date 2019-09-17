@@ -59,6 +59,7 @@ prey_predict_w_M <- tibble(M_kg = seq(5000,120000,5000), dummy =1) %>%
   select(-"dummy") %>% 
   mutate(R = `Intercept (A)`*M_kg^`Exponent (B)`,
          R_compressed_90days = (R*365)/90,
+         R_compressed_100days = (R*365)/100,
          R_compressed_120days = (R*365)/120)
 
 
@@ -104,8 +105,9 @@ BMRtoFMRprojection <- tibble(beta = seq(2,5,0.5), dummy = 1) %>%
   select(-dummy) %>% 
   mutate(ADMR = beta*KleiberBMR,
          R  = ADMR/(0.8*((3900*Z)+5400*(1-Z))),
-         R_compressed_90days = (R*365)/90,
-         R_compressed_120days = (R*365)/120)
+         R_compressed_90days = (0.83*(R*365))/90,
+         R_compressed_100days = (0.83*(R*365))/100,
+         R_compressed_120days = (0.83*(R*365))/120)
 
 
 # estimating amount of food consumed over the course of a feeding season (see Lockyer 2007).
