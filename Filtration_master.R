@@ -235,11 +235,11 @@ ex_prey_dens <- ggplot(ex_prey_dens) +
   #geom_histogram(binwidth = 0.1, fill = "gray80") +
   #geom_density(color = "blue") +
   #geom_freqpoly(aes(MRY_hyp_low_prey_dens_m3), binwidth = 0.1, color = "gray60") +
-  #geom_freqpoly(aes(MRY_hyp_low_prey_dens_m3), binwidth = 0.1, color = "gray60") +
+  geom_freqpoly(aes(MRY_hyp_low_prey_dens_m3), binwidth = 0.1, color = "gray20") +
   geom_freqpoly(aes(MRY_best_lower_prey_dens_m3), binwidth = 0.1, color = "blue") +
   geom_freqpoly(aes(MRY_best_upper_prey_dens_m3), binwidth = 0.1, color = "red") +
   labs(x = bquote('krill biomass'~(kg~per~m^3))) +
-  theme_bw(base_size = 18)
+  theme_classic(base_size = 18)
 ex_prey_dens
 
 
@@ -381,7 +381,7 @@ dev.copy2pdf(file="Engulfment_capacity_ENP.pdf", width=12, height=8)
 #plot of feeding rates per hour for ENP species 
 
 Feeding_rate_h <- filtration_master %>% 
-  filter(Region == "Eastern North Pacific", prey_general == "Krill", Phase %in% c("Day", "Night")) %>%      #  == "Total"
+  filter(Region == "Eastern North Pacific", prey_general == "Krill", Phase == "Total" %in% c("Day", "Night")) %>%      # 
   group_by(ID, Species, Engulfment_L, Phase, Rate, prey_general, Year) %>% 
   summarise(whaleLength = first(whaleLength)) %>%
   mutate(Engulfment_m3 = Engulfment_L/1000) %>%
@@ -391,7 +391,7 @@ Feeding_rate_h <- filtration_master %>%
   geom_flat_violin(position = position_nudge(x = 0.1, y = 0), alpha = .8) +
   geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
   #geom_point(position = position_jitter(width = .05), alpha = 0.6) +
-  facet_grid(Phase~., scales = "free") +
+  facet_grid(.~Year, scales = "free") +
   coord_flip() +
   scale_fill_manual(values = pal) +
   labs(x = "Species",
@@ -404,7 +404,44 @@ Feeding_rate_h
 dev.copy2pdf(file="Feeding_rate_h.pdf", width=12, height=8)
 
 
+# for University of Washington application ----
 
+JAF_data <- tribble(
+  ~ID, ~Species, ~SpeciesCode, ~Phase, ~Rate, ~prey_general, ~Year,
+  "bm151016-TDR7",    "Balaenoptera musculus", "bw", "Total", 5.21, "Krill",  "15",
+  "bm151016-TDR5",    "Balaenoptera musculus", "bw", "Total", 4.19, "Krill",  "15",
+  "bm150819-TDR5",    "Balaenoptera musculus", "bw", "Total", 6.92, "Krill",  "15",
+  "bm150818-8",    "Balaenoptera musculus", "bw", "Total", 5.70, "Krill",  "15"
+)
+
+
+Feeding_rate_bw_h <- filtration_master %>% 
+  filter(SpeciesCode == "bw",
+           Region == "Eastern North Pacific", 
+         prey_general == "Krill", 
+         Phase == "Total", 
+         Rate < 31,
+         Year != "12") %>%      #  %in% c("Day", "Night")
+  group_by(ID, Species, SpeciesCode, Phase, Rate, prey_general, Year) %>% 
+  ungroup %>% 
+  select(ID, Species, Phase, Rate, prey_general, Year) %>% 
+  bind_rows(JAF_data) %>% 
+  mutate(YearFull = paste0("20", Year)) %>% 
+  ggplot(aes(x = fct_reorder(abbr_binom(Species), Rate), y = Rate,
+             fill = abbr_binom(Species))) +
+  geom_flat_violin(position = position_nudge(x = 0.1, y = 0), alpha = .8) +
+  geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
+  geom_point(position = position_jitter(width = .05), alpha = 0.6) +
+  facet_grid(.~YearFull, scales = "free") +
+  #coord_flip() +
+  scale_fill_manual(values = pal) +
+  labs(y = expression(italic('B. musculus')~~'feeding rate'~(lunges~hr^-1))) + #bquote('Estimated water filtered'~(m^3~d^-1))
+  theme_classic(base_size = 12) +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+Feeding_rate_bw_h
 
 
 ################################
@@ -563,10 +600,10 @@ Daily_filtration <- d_strapped %>%
   geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
   coord_flip() + 
   scale_fill_manual(values = pal) +
-  #ylim(0,60000) +
+  ylim(0,60000) +
   labs(x = "Species",
        y = bquote('Estimated water filtered'~(m^3~d^-1))) + 
-  theme_bw(base_size = 14) +
+  theme_classic(base_size = 16) +
   theme(legend.position = "none",
         axis.text.y = element_text(face = "italic"))
 Daily_filtration
@@ -574,10 +611,11 @@ Daily_filtration
 
 Daily_biomass_ingested <- ggplot(filter(d_strapped, SpeciesCode != "bb")) +
   #hyp-low
-  geom_flat_violin(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_hyp_low_kg), y = prey_mass_per_day_hyp_low_kg/1000, 
-                       fill = abbr_binom(Species)), color = NA, position = position_nudge(x = 0.2, y = 0), alpha = .4, adjust = 2) +
-  geom_boxplot(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_hyp_low_kg), y = prey_mass_per_day_hyp_low_kg/1000, 
-                   fill = abbr_binom(Species)), width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.1) +
+  # geom_flat_violin(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_hyp_low_kg), y = prey_mass_per_day_hyp_low_kg/1000, 
+  #                      fill = abbr_binom(Species)), color = NA, position = position_nudge(x = 0.2, y = 0), alpha = .4, adjust = 2) +
+  # geom_boxplot(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_hyp_low_kg), y = prey_mass_per_day_hyp_low_kg/1000, 
+  #                  fill = abbr_binom(Species)), color = "gray20", width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.1,
+  #              position = position_nudge(x = -0.12, y = 0)) +
   #best-low *our best estimate*
   geom_flat_violin(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_best_low_kg), y = prey_mass_per_day_best_low_kg/1000, 
                        fill = abbr_binom(Species)), position = position_nudge(x = 0.2, y = 0), alpha = 1, adjust = 2) +
@@ -585,21 +623,21 @@ Daily_biomass_ingested <- ggplot(filter(d_strapped, SpeciesCode != "bb")) +
                    fill = abbr_binom(Species)), width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.8,
                position = position_nudge(x = 0.12, y = 0)) +
   #best-upper
-  geom_flat_violin(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_best_upper_kg), y = prey_mass_per_day_best_upper_kg/1000, 
-                       fill = abbr_binom(Species)), color = NA, position = position_nudge(x = 0.2, y = 0), alpha = .4, adjust = 2) +
-  geom_boxplot(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_best_upper_kg), y = prey_mass_per_day_best_upper_kg/1000, 
-                   fill = abbr_binom(Species)), width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.1) +
+  # geom_flat_violin(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_best_upper_kg), y = prey_mass_per_day_best_upper_kg/1000, 
+  #                      fill = abbr_binom(Species)), color = NA, position = position_nudge(x = 0.2, y = 0), alpha = .4, adjust = 2) +
+  # geom_boxplot(aes(x = fct_reorder(abbr_binom(Species), prey_mass_per_day_best_upper_kg), y = prey_mass_per_day_best_upper_kg/1000, 
+  #                  fill = abbr_binom(Species)), color = "red", width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.1) +
   ylim(0,100) +
   coord_flip() +
   scale_fill_manual(values = pal) +
   labs(x = "Species",
-       y = bquote('Estimated prey consumption'~(tonnes~d^-1))) +
-  theme_bw(base_size = 18) +
+       y = bquote('Estimated prey consumed'~(tonnes~d^-1))) +
+  theme_classic(base_size = 20) +
   theme(legend.position = "none",
         axis.text.y = element_text(face = "italic"))
 Daily_biomass_ingested
 
-dev.copy2pdf(file="Daily_biomass_ingested.pdf", width=12, height=8)
+dev.copy2pdf(file="Daily_biomass_ingested.pdf", width=14, height=8)
 
 
 Rate_by_length <- ggplot(d_strapped, 
