@@ -6,6 +6,7 @@ install.packages("plot3D")
 library("plot3D")
 library(tidyverse)
 
+#raw data
 LungesPerDive_water <- read.csv("Figure 5 filtration paper data.csv") %>%
   filter(TL > 6) %>% 
   filter(Lunge_Count>0) %>% 
@@ -16,7 +17,7 @@ LungesPerDive_water <- read.csv("Figure 5 filtration paper data.csv") %>%
            SpeciesCode == "bp" ~ "Balaenoptera physalus",
            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
            SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"))    
-#raw data 
+ 
   
 # data tidying ----  
 
