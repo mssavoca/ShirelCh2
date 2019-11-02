@@ -2,6 +2,8 @@
 
 # load packages and data ----
 
+install.packages("plot3D")
+library("plot3D")
 library(tidyverse)
 
 LungesPerDive_water <- read.csv("Figure 5 filtration paper data.csv") %>%
@@ -56,7 +58,9 @@ TotalWaterByTL
 
 ### total water per dive, made mass specific by TL, raw data style
 TotalWater_MassSpecific <- ggplot() +
-  geom_point(data = LungesPerDive_water, aes (y = log10(MR), x = log10(TL), shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8)+  
+  geom_point(data = LungesPerDive_water, 
+             aes (y = log10(MR), x = log10(TL), 
+                  shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8)+  
   scale_color_gradientn(colours = c("skyblue2",
                                     "deepskyblue2",
                                     "dodgerblue2", "royalblue",
@@ -80,6 +84,17 @@ MR <- ggplot() +
   geom_point(data = LungesPerDive_MR_summary, aes(x = fct_reorder(ID, MR_mean), y = MR_mean, color = ))+
   theme(axis.text.x = element_text(angle = 90))
 MR
+
+
+# trying a 3D plot ----
+#very basic, but you'll get the general idea
+
+scatter3D(x = log10(LungesPerDive_water$TL), y = log10(LungesPerDive_water$MR), z = LungesPerDive_water$Mean_Depth, phi = 0, bty ="g",
+          xlab = "log Total Length (m)",
+          ylab ="log Total Water Per Dive (s)", # are the unite correct here?
+          zlab = "Lunge Depth (m)")
+
+# for more info, and to  customize, see: http://www.sthda.com/english/wiki/impressive-package-for-3d-and-4d-graph-r-software-and-data-visualization
 
 
 
