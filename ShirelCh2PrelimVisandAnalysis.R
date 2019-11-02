@@ -32,7 +32,10 @@ f_data <- left_join(f_data, tag_guide[ , c("ID", "Study_Area     _")], by = "ID"
   f_data <- within(f_data, rm(notes)) #removing unwanted columns and rows
 
 v_data <- read_excel("mwmrmeasures.xlsx")
-  v_data <- v_data[,c(1:3)] #keeps only columns 1-3
+  v_data <- v_data[,c(1:3)] %>%  #keeps only columns 1-3
+    rename(MW = "MW...2",
+           Species = "Species...3")
+  
   names(v_data)[names(v_data) == 'Species'] <- 'CommonName'
   v_data$L <- v_data$MW*0.9766  #creates column that converts MW (kg) to liters
   

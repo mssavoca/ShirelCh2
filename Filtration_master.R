@@ -381,7 +381,7 @@ dev.copy2pdf(file="Engulfment_capacity_ENP.pdf", width=12, height=8)
 #plot of feeding rates per hour for ENP species 
 
 Feeding_rate_h <- filtration_master %>% 
-  filter(Region == "Eastern North Pacific", prey_general == "Krill", Phase == "Total" %in% c("Day", "Night")) %>%      # 
+  filter(prey_general == "Krill", Phase == "Total") %>%      # 
   group_by(ID, Species, Engulfment_L, Phase, Rate, prey_general, Year) %>% 
   summarise(whaleLength = first(whaleLength)) %>%
   mutate(Engulfment_m3 = Engulfment_L/1000) %>%
@@ -391,7 +391,7 @@ Feeding_rate_h <- filtration_master %>%
   geom_flat_violin(position = position_nudge(x = 0.1, y = 0), alpha = .8) +
   geom_boxplot(width = .1, guides = FALSE, outlier.shape = NA, alpha = 0.5) +
   #geom_point(position = position_jitter(width = .05), alpha = 0.6) +
-  facet_grid(.~Year, scales = "free") +
+  #facet_grid(.~Year, scales = "free") +
   coord_flip() +
   scale_fill_manual(values = pal) +
   labs(x = "Species",

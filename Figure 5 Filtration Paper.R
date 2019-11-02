@@ -1,8 +1,10 @@
 ## Figure 5 ########33
 
+# load packages and data ----
+
 library(tidyverse)
 
-LungesPerDive_water <- read.csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/Figure 5 filtration paper data.csv") %>%
+LungesPerDive_water <- read.csv("Figure 5 filtration paper data.csv") %>%
   filter(TL > 6) %>% 
   filter(Lunge_Count>0) %>% 
   mutate(SpeciesCode = substr(ID, 2, 3),
@@ -14,7 +16,8 @@ LungesPerDive_water <- read.csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/
            SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"))    
 #raw data 
   
-  
+# data tidying ----  
+
 LungesPerDive_water_summary <- LungesPerDive_water %>% ## add species
   mutate(SpeciesCode = substr(ID, 1, 2),
          ID = str_remove_all(ID, "[']"),
@@ -28,6 +31,7 @@ LungesPerDive_water_summary <- LungesPerDive_water %>% ## add species
             MW_mean = mean(MW))
 
 
+# plotting ----
 
 #total water per dive (classed by depth) by total length raw data style, not mass specific 
 
@@ -52,7 +56,7 @@ TotalWaterByTL
 
 ### total water per dive, made mass specific by TL, raw data style
 TotalWater_MassSpecific <- ggplot() +
-  geom_point(data = LungesPerDive_MR, aes (y = log10(MR), x = log10(TL), shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8)+  
+  geom_point(data = LungesPerDive_water, aes (y = log10(MR), x = log10(TL), shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8)+  
   scale_color_gradientn(colours = c("skyblue2",
                                     "deepskyblue2",
                                     "dodgerblue2", "royalblue",
