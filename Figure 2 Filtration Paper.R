@@ -1,7 +1,8 @@
 # Figure 3 Filtration Paper
 
-# Packages and FUnctions ---- 
+# Packages and Functions ---- 
 library(data.table)
+library(ggpubr)
 library(readxl)
 library(forcats)
 library(tidyverse)
@@ -71,6 +72,7 @@ species_summary <- LungesPerDive_raw %>%
 
 
 
+
 # Plots Fig 2 raw data #####
 
 #Plotting all data - Lunge Count vs TL
@@ -113,32 +115,62 @@ lungesperdive_bar <- ggplot(data = species_summary,
 lungesperdive_bar
 
 
-# Plot by depth
 
+# Plot by depth - Jeremy had an idea to have a three panel plot. does it look better as points or as violin?  
+
+#Points 
 Fiftyandbelow <- LungesPerDive_raw %>% 
   filter(depthcat == "dive_50",
          response == "Y")
+Hundredandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_100",
+         response =="Y")
+HundredFiftyandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_150",
+         response =="Y")
+
 
 PlotFifty <- ggplot(data = Fiftyandbelow, 
                         aes(x=TL, y= Lunge_Count, color = SpeciesCode, shape = SpeciesCode))+
                geom_point()
 PlotFifty
 
-Hundredandbelow <- LungesPerDive_raw %>% 
-  filter(depthcat == "dive_100",
-         response =="Y")
-
 PlotHundred <- ggplot(data = Hundredandbelow, 
-                    aes(x=TL, y= Lunge_Count,  color = SpeciesCode, shape = SpeciesCode))+
-  geom_violin()
+                    aes(x=TL, y= Lunge_Count, color = SpeciesCode, shape = SpeciesCode))+
+  geom_point()
 PlotHundred
 
-HUndredFiftyandbelow <- LungesPerDive_raw %>% 
-  filter(depthcat == "dive_150",
-         response =="Y")
-
-PlotHundredFifty <- ggplot(data = HUndredFiftyandbelow, 
-                      aes(x=TL, y= Lunge_Count,  color = SpeciesCode, shape = SpeciesCode))+
-  geom_violin()
+PlotHundredFifty <- ggplot(data = HundredFiftyandbelow, 
+                    aes(x=TL, y= Lunge_Count, color = SpeciesCode, shape = SpeciesCode))+
+  geom_point()
 PlotHundredFifty
+
+
+#Violin
+
+PlotFifty <- ggplot(data = Fiftyandbelow, 
+                      aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
+  geom_violin()+
+  labs(x = "log Total Length (m)",
+       y = "Lunges Per Dive")
+
+
+PlotHundred <- ggplot(data = Hundredandbelow, 
+                    aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
+  geom_violin()+
+  labs(x = "log Total Length (m)",
+       y = "Lunges Per Dive")
+
+
+PlotHundredFifty <- ggplot(data = HundredFiftyandbelow, 
+                      aes(x=TL, y= Lunge_Count,  fill = SpeciesCode,color = SpeciesCode, shape = SpeciesCode))+
+  geom_violin()+
+  labs(x = "log Total Length (m)",
+       y = "Lunges Per Dive")
+
+
+ggarrange(PlotFifty, PlotHundred, PlotHundredFifty + rremove("x.text"), 
+          labels = c("50m and Deeper", "100m and Deeper", "150m and Deeper"),
+          ncol = 2, nrow = 2) 
+
 
