@@ -8,35 +8,57 @@ library(glmm)
 library(lme4)
 install.packages("glmm")
 
-GLMM <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/GLMM data.csv") %>% 
+GLMM <- read_csv("GLMM data.csv") %>% 
   filter(TL > 6) %>% 
   filter(Lunge_Count>0) %>% 
-  filter(Mean_Depth >8) %>% # min minke body length
+  filter(Mean_Depth >50) %>% # min minke body length
   mutate(SpeciesCode = substr(ID, 2, 3),
          ID = str_remove_all(ID, "[']"),
          SciName = case_when(
            SpeciesCode == "bw" ~ "Balaenoptera musculus",
            SpeciesCode == "bp" ~ "Balaenoptera physalus",
            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
-           SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"))  
+           SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
+          TL_z = as.numeric(scale(TL)),
+          Mean_Depth_z = as.numeric(scale(Mean_Depth)),
+          Dive_Length_z = as.numeric(scale(Dive_Length)))
+         
+GLMM2 <-  GLMM %>% 
+  filter(SpeciesCode != "bp") %>% 
+  droplevels()
 
 
 hist(log10(GLMM$Lunge_Count))
 hist(log10(GLMM$TL))
 hist(log10(GLMM$Mean_Depth))
 
-whale <- glmer(Lunge_Count ~ log10(Mean_Depth) + log10(TL) + (1| SpeciesCode/ID), data = GLMM, family = "quasipoisson")
+whale <- glmer(Lunge_Count ~ log10(Mean_Depth) + log10(TL) + SpeciesCode + (1| ID), data = GLMM, family = "poisson")
 summary(whale)
 
 hist(resid(whale))
 plot(GLMM$TL,resid(whale))
+plot()
 
-whale2 <- glmer(Lunge_Count ~ log10(Mean_Depth) + log10(TL) + log10(Dive_Length)  + (1| ID),
-                data = GLMM, family = "quasipoisson")
+whale2 <- glmer(Lunge_Count ~ Mean_Depth_z + 
+                  TL_z + 
+                  Dive_Length_z + 
+                  (1| ID), 
+                data = GLMM, family = "poisson")
 summary(whale2)
+
+whale3 <- glmer(Lunge_Count ~ Mean_Depth_z + 
+                  SpeciesCode + 
+                  Dive_Length_z + 
+                  (1| ID), 
+                data = GLMM, family = "poisson")
+
+AIC(whale2, whale3)
 
 hist(resid(whale2))
 plot(GLMM$TL,resid(whale2))
+plot(GLMM$Mean_Depth, resid(whale2))
+plot(GLMM$Dive_Length, resid(whale2))
+plot(GLMM$SpeciesCode, resid(whale2)) #plot resid of model against species code if dispersed the affect of species does not explain any more variation in the data
 
 ggplot(data = GLMM, aes(x = log10(TL), y = Lunge_Count)) +
   geom_point() +
