@@ -1,5 +1,6 @@
 # Figure 3 Filtration Paper
 
+# Packages and FUnctions ---- 
 library(data.table)
 library(readxl)
 library(forcats)
@@ -10,9 +11,10 @@ library(lme4)
 library(lmerTest)
 library(MuMIn)
 library(ggpubr)
+library(ggplot2)
 
 
-# Abbreviate a binomial e.g. Balaenoptera musculus -> B. musculus
+# Abbreviate a binomial e.g. Balaenoptera musculus -> B. musculus 
 abbr_binom <- function(binom) {
   paste(str_sub(binom, 1, 1), 
         str_extract(binom, " .*"), 
@@ -21,7 +23,8 @@ abbr_binom <- function(binom) {
 
 SE = function(x){sd(x)/sqrt(sum(!is.na(x)))}
 
-LungesPerDive_raw_csv <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/Figure 2 filtration paper data.csv")
+# Data Input ----
+LungesPerDive_raw_csv <- read_csv("Figure 2 filtration paper data.csv")
 
 LungesPerDive_raw <- LungesPerDive_raw_csv %>% 
   filter(Lunge_Count >0, TL >6) %>% 
@@ -46,7 +49,7 @@ LungesPerDive_raw <- LungesPerDive_raw_csv %>%
          depthcat = factor(depthcat),
          response = factor(response)) 
         
-         
+# Manipulations ----         
 
 LungesPerDive_summary <- LungesPerDive_raw %>% 
   group_by(ID) %>% 
@@ -68,7 +71,9 @@ species_summary <- LungesPerDive_raw %>%
 
 
 
-############## Plot Fig 2 raw data ###################
+# Plots Fig 2 raw data #####
+
+#Plotting all data - Lunge Count vs TL
 
 Fig2 <-  ggplot(data = filter(LungesPerDive_raw, deep_dive == "Y"), 
                 aes(x=TL, y= Lunge_Count, # shape = abbr_binom(SciName), 
@@ -97,7 +102,7 @@ Fig2 <-  ggplot(data = filter(LungesPerDive_raw, deep_dive == "Y"),
 Fig2
 
 
-############### PLot Fig 2 species summary ##############
+#Plot Fig 2 species summary 
 
 lungesperdive_bar <- ggplot(data = species_summary, 
                             aes( x= reorder(SpeciesCode, -wgt_mean), y = wgt_mean, fill = depthcat)) +
@@ -108,6 +113,32 @@ lungesperdive_bar <- ggplot(data = species_summary,
 lungesperdive_bar
 
 
+# Plot by depth
 
+Fiftyandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_50",
+         response == "Y")
 
+PlotFifty <- ggplot(data = Fiftyandbelow, 
+                        aes(x=TL, y= Lunge_Count, color = SpeciesCode, shape = SpeciesCode))+
+               geom_point()
+PlotFifty
+
+Hundredandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_100",
+         response =="Y")
+
+PlotHundred <- ggplot(data = Hundredandbelow, 
+                    aes(x=TL, y= Lunge_Count,  color = SpeciesCode, shape = SpeciesCode))+
+  geom_violin()
+PlotHundred
+
+HUndredFiftyandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_150",
+         response =="Y")
+
+PlotHundredFifty <- ggplot(data = HUndredFiftyandbelow, 
+                      aes(x=TL, y= Lunge_Count,  color = SpeciesCode, shape = SpeciesCode))+
+  geom_violin()
+PlotHundredFifty
 
