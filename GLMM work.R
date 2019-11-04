@@ -39,7 +39,7 @@ hist(resid(whale))
 plot(GLMM$TL,resid(whale))
 plot()
 
-whale2 <- glmer(Lunge_Count ~ Mean_Depth_z + 
+whale2 <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinner
                   TL_z + 
                   Dive_Length_z + 
                   (1| ID), 
