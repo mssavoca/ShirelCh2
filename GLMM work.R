@@ -57,9 +57,7 @@ plot(GLMM$Mean_Depth, resid(whale2))
 plot(GLMM$Dive_Length, resid(whale2))
 plot(GLMM$SpeciesCode, resid(whale2)) #plot resid of model against species code if dispersed the affect of species does not explain any more variation in the data
 
-ggplot(data = GLMM, aes(x = log10(TL), y = Lunge_Count)) +
-  geom_point() +
-  geom_smooth(method = lm)
+
 
 
 # Old Attempts ----
@@ -97,7 +95,9 @@ gamma <- fitdistr(GLMM$Lunge_Count.t, "gamma")
 qqp(GLMM$Lunge_Count.t, "gamma", shape = gamma$estimate[[1]], rate = gamma$estimate[[2]])
 
 
-
+ggplot(data = GLMM, aes(x = log10(TL), y = Lunge_Count)) +
+  geom_point() +
+  geom_smooth(method = lm)
 
 
 

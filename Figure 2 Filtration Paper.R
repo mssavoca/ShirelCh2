@@ -75,7 +75,7 @@ species_summary <- LungesPerDive_raw %>%
 
 # Plots Fig 2 raw data #####
 
-#Plotting all data - Lunge Count vs TL
+#Plotting all data - Lunge Count vs TL ----
 
 Fig2 <-  ggplot(data = filter(LungesPerDive_raw, deep_dive == "Y"), 
                 aes(x=TL, y= Lunge_Count, # shape = abbr_binom(SciName), 
@@ -118,7 +118,7 @@ lungesperdive_bar
 
 # Plot by depth - Jeremy had an idea to have a three panel plot. does it look better as points or as violin?  
 
-#Points 
+#Points ----
 Fiftyandbelow <- LungesPerDive_raw %>% 
   filter(depthcat == "dive_50",
          response == "Y")
@@ -146,7 +146,7 @@ PlotHundredFifty <- ggplot(data = HundredFiftyandbelow,
 PlotHundredFifty
 
 
-#Violin
+#Violin ----
 
 PlotFifty <- ggplot(data = Fiftyandbelow, 
                       aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
