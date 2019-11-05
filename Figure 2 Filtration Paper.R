@@ -73,7 +73,6 @@ species_summary <- LungesPerDive_raw %>%
 
 
 
-# Plots Fig 2 raw data #####
 
 #Plotting all data - Lunge Count vs TL ----
 
@@ -174,3 +173,51 @@ ggarrange(PlotFifty, PlotHundred, PlotHundredFifty + rremove("x.text"),
           ncol = 2, nrow = 2) 
 
 
+
+
+#Statistics for Lunge Count - GLMM ----
+GLMM <- read_csv("GLMM data.csv") %>% 
+  filter(TL > 6) %>% 
+  filter(Lunge_Count>0) %>% 
+  filter(Mean_Depth >50) %>% 
+  mutate(SpeciesCode = substr(ID, 2, 3),
+         ID = str_remove_all(ID, "[']"),
+         SciName = case_when(
+           SpeciesCode == "bw" ~ "Balaenoptera musculus",
+           SpeciesCode == "bp" ~ "Balaenoptera physalus",
+           SpeciesCode == "mn" ~ "Megaptera novaeangliae",
+           SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
+         TL_z = as.numeric(scale(TL)),
+         Mean_Depth_z = as.numeric(scale(Mean_Depth)),
+         Dive_Length_z = as.numeric(scale(Dive_Length)))
+
+
+#Plot to determine distribution. should these be scaled or logged?
+hist(log10(GLMM$Lunge_Count))
+hist(log10(GLMM$TL))
+hist(log10(GLMM$Mean_Depth))
+
+
+LungeCountGLMM <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinner. why dont we scale lunge count?
+                  TL_z + 
+                  Dive_Length_z + 
+                  (1| ID), 
+                data = GLMM, family = "poisson")
+summary(LungeCountGLMM)
+
+
+# includes speciescode as a variable. this isn't as useful as including TL. they are redundant if both included. 
+#this model is slightly less good than whale2
+# whale3 <- glmer(Lunge_Count ~ Mean_Depth_z + 
+#                   SpeciesCode + 
+#                   Dive_Length_z + 
+#                   (1| ID), 
+#                 data = GLMM, family = "poisson")
+
+AIC(whale2, whale3)
+
+hist(resid(whale2))
+plot(GLMM$TL,resid(whale2))
+plot(GLMM$Mean_Depth, resid(whale2))
+plot(GLMM$Dive_Length, resid(whale2))
+plot(GLMM$SpeciesCode, resid(whale2)) #plot resid of model against species code if dispersed the affect of species does not explain any more variation in the data

@@ -2,6 +2,7 @@
 
 ## TL by Filter Time
 
+# Packages and Functions ----
 install.packages("gridExtra")
 install.packages("ggpubr")
 install.packages("rstanarm")
@@ -9,6 +10,8 @@ install.packages("rstanarm")
 library(ggpubr)
 library(ggplot2)
 library(rstanarm)
+library(tidyverse)
+library(lme4)
 
 # Abbreviate a binomial e.g. Balaenoptera musculus -> B. musculus
 abbr_binom <- function(binom) {
@@ -17,16 +20,24 @@ abbr_binom <- function(binom) {
         sep = ".")
 }
 
-## I'm using the min filter times sheet because that should contain the most filter times and the greatest range of depth
-
+# Input Data ----
 FilterTimebySize <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/Files for Filtration Chapter/FilterTimes 10102019/FilterTimesMin.csv") %>%
   filter(TL > 6) %>% #made it 6 m
+  filter(meandepthoflunge > 50) %>% 
   mutate(SpeciesCode = substr(whaleID, 1, 2),
          SciName = case_when(
            SpeciesCode == "bw" ~ "Balaenoptera musculus",
            SpeciesCode == "bp" ~ "Balaenoptera physalus",
            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
-           SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"))
+           SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
+         Mean_Lunges_z = as.numeric(scale(meanlungesforagedives)),
+         Mean_Depth_z = as.numeric(scale(meandepthoflunge)),
+         TL_z = as.numeric(scale(TL)),
+         Dive_Length_z = as.numeric(scale(meanforagedivelength)))
+
+
+# Plot All Data ----
+## I'm using the min filter times sheet because that should contain the most filter times and the greatest range of depth
 
 FilterbySize <- ggplot() +
   geom_point(data = FilterTimebySize, aes (y = log10(meanpurge1), x = log10(TL), shape=abbr_binom(SciName), color = meandepthoflunge, size = meandepthoflunge), alpha = 0.8)+  
@@ -50,10 +61,26 @@ FilterbySize <- ggplot() +
 FilterbySize
 
 
+# GLMM for Filter Time ----
+
+#plot to determine distribution
+hist(log10(FilterTimebySize$meanpurge1))
+hist(scale(FilterTimebySize$meanpurge1))
+hist(FilterTimebySize$meanpurge1)
+hist(log10(FilterTimebySize$TL))
+hist(log10(FilterTimebySize$meandepthoflunge))
 
 
 
+FilterTimeGLMM <- glmer(meanpurge1 ~ Mean_Lunges_z + 
+                          Mean_Depth_z + 
+                          TL_z + 
+                          Dive_Length_z)+
+                          (1 | whaleID)
 
+
+
+# Graphs by Depth ----
 
 ##Min
 FilterTimesMin <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/Files for Filtration Chapter/FilterTimes 10102019/FilterTimesMin.csv") %>%
