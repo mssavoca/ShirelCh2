@@ -1,5 +1,6 @@
 ### GLMM Attempt ###
 
+# Packages and Libraries ----
 library(readr)
 library(tidyverse)
 library(car)
@@ -8,10 +9,12 @@ library(glmm)
 library(lme4)
 install.packages("glmm")
 
+
+# Input Data ----
 GLMM <- read_csv("GLMM data.csv") %>% 
   filter(TL > 6) %>% 
   filter(Lunge_Count>0) %>% 
-  filter(Mean_Depth >50) %>% # min minke body length
+  filter(Mean_Depth >50) %>% 
   mutate(SpeciesCode = substr(ID, 2, 3),
          ID = str_remove_all(ID, "[']"),
          SciName = case_when(
@@ -23,21 +26,12 @@ GLMM <- read_csv("GLMM data.csv") %>%
           Mean_Depth_z = as.numeric(scale(Mean_Depth)),
           Dive_Length_z = as.numeric(scale(Dive_Length)))
          
-GLMM2 <-  GLMM %>% 
-  filter(SpeciesCode != "bp") %>% 
-  droplevels()
 
-
+#Plot to determine distribution
 hist(log10(GLMM$Lunge_Count))
 hist(log10(GLMM$TL))
 hist(log10(GLMM$Mean_Depth))
 
-whale <- glmer(Lunge_Count ~ log10(Mean_Depth) + log10(TL) + SpeciesCode + (1| ID), data = GLMM, family = "poisson")
-summary(whale)
-
-hist(resid(whale))
-plot(GLMM$TL,resid(whale))
-plot()
 
 whale2 <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinner
                   TL_z + 
@@ -46,11 +40,14 @@ whale2 <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinner
                 data = GLMM, family = "poisson")
 summary(whale2)
 
-whale3 <- glmer(Lunge_Count ~ Mean_Depth_z + 
-                  SpeciesCode + 
-                  Dive_Length_z + 
-                  (1| ID), 
-                data = GLMM, family = "poisson")
+
+# includes speciescode as a variable. this isn't as useful as including TL. they are redundant if both included. 
+#this model is slightly less good than whale2
+# whale3 <- glmer(Lunge_Count ~ Mean_Depth_z + 
+#                   SpeciesCode + 
+#                   Dive_Length_z + 
+#                   (1| ID), 
+#                 data = GLMM, family = "poisson")
 
 AIC(whale2, whale3)
 
@@ -65,6 +62,7 @@ ggplot(data = GLMM, aes(x = log10(TL), y = Lunge_Count)) +
   geom_smooth(method = lm)
 
 
+# Old Attempts ----
 overdisp_fun <- function(model) {
   rdf <- df.residual(model)
   rp <- residuals(model,type="pearson")
@@ -76,13 +74,13 @@ overdisp_fun <- function(model) {
 
 overdisp_fun(whale)
 
+# whale <- glmer(Lunge_Count ~ log10(Mean_Depth) + log10(TL) + SpeciesCode + (1| ID), data = GLMM, family = "poisson")
+# summary(whale)
+# 
+# hist(resid(whale))
+# plot(GLMM$TL,resid(whale))
+# plot()
 
-
-
-
-
-##TESTS##
-#for lunge count
 str(GLMM)
 head(GLMM) # variables of interest are lunge count and dive length 
 GLMM$Lunge_Count.t <- GLMM$Lunge_Count
