@@ -21,7 +21,7 @@ abbr_binom <- function(binom) {
 }
 
 # Input Data ----
-FilterTimebySize <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/Files for Filtration Chapter/FilterTimes 10102019/FilterTimesMin.csv") %>%
+FilterTimebySize <- read_csv("FilterTimesMin.csv") %>%
   filter(TL > 6) %>% #made it 6 m
   filter(meandepthoflunge > 50) %>% 
   mutate(SpeciesCode = substr(whaleID, 1, 2),
