@@ -15,6 +15,7 @@ library(ggpubr)
 library(ggplot2)
 
 
+
 # Abbreviate a binomial e.g. Balaenoptera musculus -> B. musculus 
 abbr_binom <- function(binom) {
   paste(str_sub(binom, 1, 1), 
@@ -196,6 +197,7 @@ GLMM <- read_csv("GLMM data.csv") %>%
 hist(log10(GLMM$Lunge_Count))
 hist(log10(GLMM$TL))
 hist(log10(GLMM$Mean_Depth))
+plot(data=)
 
 
 LungeCountGLMM <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinner. why dont we scale lunge count?
@@ -204,6 +206,13 @@ LungeCountGLMM <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinn
                   (1| ID), 
                 data = GLMM, family = "poisson")
 summary(LungeCountGLMM)
+
+
+install.packages("effects")
+library(effects)
+plot(allEffects(LungeCountGLMM)) #shows the relationship shown the the summary
+#exponentiating the coefficient makes it an odds, like in: odds are 5:1 on a horse (exp(beta_0) = 5). 
+#Effects are then multiplicative, like in: under condition x, the odds increase by factor 2 (exp(beta_x) = 2)
 
 
 # includes speciescode as a variable. this isn't as useful as including TL. they are redundant if both included. 

@@ -78,12 +78,15 @@ FilterTimeGLMM <- glmer(meanpurge1 ~ Mean_Lunges_z +
                           Dive_Length_z)+
                           (1 | whaleID)
 
-
+Example1<- ggplot() +
+  geom_point(data = FilterTimesMin, 
+             aes(y = log(meanforagedivelength), x = log(meandepthoflunge)))
+Example1
 
 # Graphs by Depth ----
 
 ##Min
-FilterTimesMin <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/Files for Filtration Chapter/FilterTimes 10102019/FilterTimesMin.csv") %>%
+FilterTimesMin <- read_csv("FilterTimesMin.csv") %>%
   mutate(SpeciesCode = substr(whaleID, 1, 2),
          SciName = case_when(
            SpeciesCode == "bw" ~ "Balaenoptera musculus",
