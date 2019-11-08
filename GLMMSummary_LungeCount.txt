@@ -1,0 +1,31 @@
+Generalized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']
+ Family: poisson  ( log )
+Formula: Lunge_Count ~ Mean_Depth_z + TL_z + Dive_Length_z + (1 | ID)
+   Data: GLMM
+
+     AIC      BIC   logLik deviance df.resid 
+  5257.1   5283.2  -2623.6   5247.1     1350 
+
+Scaled residuals: 
+     Min       1Q   Median       3Q      Max 
+-2.36607 -0.33643  0.05089  0.38781  2.48489 
+
+Random effects:
+ Groups Name        Variance Std.Dev.
+ ID     (Intercept) 0.04044  0.2011  
+Number of obs: 1355, groups:  ID, 42
+
+Fixed effects:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)    1.53075    0.03663  41.790  < 2e-16 ***
+Mean_Depth_z   0.16908    0.01954   8.652  < 2e-16 ***
+TL_z          -0.31718    0.03841  -8.259  < 2e-16 ***
+Dive_Length_z  0.07048    0.01325   5.321 1.03e-07 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) Mn_Dp_ TL_z  
+Mean_Dpth_z -0.075              
+TL_z         0.122 -0.282       
+Div_Lngth_z -0.076 -0.010 -0.223

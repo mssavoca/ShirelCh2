@@ -1,4 +1,4 @@
-# Figure 3 Filtration Paper
+# Figure 3 Filtration Paper - this file includes the lunges per dive plot and the glmm for that data
 
 # Packages and Functions ---- 
 library(data.table)
@@ -13,6 +13,8 @@ library(lmerTest)
 library(MuMIn)
 library(ggpubr)
 library(ggplot2)
+library(effects)
+
 
 
 # Abbreviate a binomial e.g. Balaenoptera musculus -> B. musculus 
@@ -43,13 +45,22 @@ LungesPerDive_raw <- LungesPerDive_raw_csv %>%
            SciName == "Balaenoptera bonaerensis" ~ "8"), 
          dive_50 = ifelse(Mean_Depth <= 50, "N", "Y"),
          dive_100 = ifelse(Mean_Depth <= 100, "N", "Y"),
-         dive_150 = ifelse(Mean_Depth <= 150, "N", "Y")) %>% 
+         dive_150 = ifelse(Mean_Depth <= 150, "N", "Y"),
+         SpeciesFull = case_when(
+           SciName == "Balaenoptera musculus" ~ "B. musculus",
+           SciName == "Balaenoptera physalus" ~ "B. physalus",
+           SciName == "Megaptera novaeangliae" ~ "M. novaeangliae",
+           SciName == "Balaenoptera bonaerensis" ~ "B. bonaerensis")) %>% 
   pivot_longer(cols = dive_50:dive_150, names_to = "depthcat", values_to = "response") %>% 
   group_by(ID) %>% 
   mutate(foragingdivecount = n_distinct(Dive_Num),
          depthcat = factor(depthcat),
          response = factor(response)) 
-        
+
+
+
+
+
 # Manipulations ----         
 
 LungesPerDive_summary <- LungesPerDive_raw %>% 
@@ -76,11 +87,11 @@ species_summary <- LungesPerDive_raw %>%
 
 #Plotting all data - Lunge Count vs TL ----
 
-Fig2 <-  ggplot(data = filter(LungesPerDive_raw, deep_dive == "Y"), 
-                aes(x=TL, y= Lunge_Count, # shape = abbr_binom(SciName), 
+Fig2 <-  ggplot(data = LungesPerDive_raw, 
+                aes(x=TL, y= Lunge_Count,  shape = abbr_binom(SciName), 
                     color = Mean_Depth, size = Mean_Depth), alpha = 0.8) +
   geom_point() +
-  geom_smooth(method = lm) +
+  #geom_smooth(method = lm) +
   scale_color_gradientn(colours = c("skyblue2",
                                     "deepskyblue2",
                                     "dodgerblue2", "royalblue",
@@ -103,7 +114,7 @@ Fig2 <-  ggplot(data = filter(LungesPerDive_raw, deep_dive == "Y"),
 Fig2
 
 
-#Plot Fig 2 species summary 
+#Plot Fig 2 species summary ----
 
 lungesperdive_bar <- ggplot(data = species_summary, 
                             aes( x= reorder(SpeciesCode, -wgt_mean), y = wgt_mean, fill = depthcat)) +
@@ -115,7 +126,9 @@ lungesperdive_bar
 
 
 
-# Plot by depth - Jeremy had an idea to have a three panel plot. does it look better as points or as violin?  
+
+# Plot by Depth Bins ----
+#- Jeremy had an idea to have a three panel plot. does it look better as points or as violin?  
 
 #Points ----
 Fiftyandbelow <- LungesPerDive_raw %>% 
@@ -145,32 +158,65 @@ PlotHundredFifty <- ggplot(data = HundredFiftyandbelow,
 PlotHundredFifty
 
 
+
 #Violin ----
+Fiftyandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_50",
+         response == "Y")
+Hundredandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_100",
+         response =="Y")
+HundredFiftyandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_150",
+         response =="Y")
 
-PlotFifty <- ggplot(data = Fiftyandbelow, 
-                      aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
-  geom_violin()+
+
+PlotFifty <- ggplot(data = Fiftyandbelow, aes(x=log(TL), y= log(Lunge_Count), fill = SpeciesFull)) +
+  geom_violin() +
+  geom_boxplot(width = 0.1) +
   labs(x = "log Total Length (m)",
-       y = "Lunges Per Dive")
+       y = "log Lunges Per Dive") +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold"))+
+  guides(fill = guide_legend("Species"))+
+  theme(legend.text = element_text(size=10, 
+                                   face="italic"))
 
+PlotFifty
 
 PlotHundred <- ggplot(data = Hundredandbelow, 
-                    aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
-  geom_violin()+
+                    aes(x=log(TL), y= log(Lunge_Count),  fill = SpeciesFull))+
+  geom_violin() +
+  geom_boxplot(width = 0.1) +
   labs(x = "log Total Length (m)",
-       y = "Lunges Per Dive")
+       y = "log Lunges Per Dive") +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold"))+
+  guides(fill = guide_legend("Species"))+
+  theme(legend.text = element_text(size=10, 
+                                   face="italic"))
 
 
 PlotHundredFifty <- ggplot(data = HundredFiftyandbelow, 
-                      aes(x=TL, y= Lunge_Count,  fill = SpeciesCode,color = SpeciesCode, shape = SpeciesCode))+
+                      aes(x=log(TL), y= log(Lunge_Count),  fill = SpeciesFull))+
   geom_violin()+
+  geom_boxplot(width = 0.1) +
   labs(x = "log Total Length (m)",
-       y = "Lunges Per Dive")
+       y = "log Lunges Per Dive") +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold"))+
+  guides(fill = guide_legend("Species"))+
+  theme(legend.text = element_text(size=10, 
+                                   face="italic"))
 
 
-ggarrange(PlotFifty, PlotHundred, PlotHundredFifty + rremove("x.text"), 
-          labels = c("50m and Deeper", "100m and Deeper", "150m and Deeper"),
-          ncol = 2, nrow = 2) 
+ggarrange(PlotFifty, PlotHundred, PlotHundredFifty + 
+            rremove("x.text"), 
+          labels = c("50m and Deeper", 
+                     "100m and Deeper", 
+                     "150m and Deeper"),
+          ncol = 3, nrow = 1) +
+  theme_classic() 
 
 
 
@@ -196,6 +242,7 @@ GLMM <- read_csv("GLMM data.csv") %>%
 hist(log10(GLMM$Lunge_Count))
 hist(log10(GLMM$TL))
 hist(log10(GLMM$Mean_Depth))
+plot(data=)
 
 
 LungeCountGLMM <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinner. why dont we scale lunge count?
@@ -203,7 +250,13 @@ LungeCountGLMM <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinn
                   Dive_Length_z + 
                   (1| ID), 
                 data = GLMM, family = "poisson")
-summary(LungeCountGLMM)
+GLMMSummary_LungeCount <- summary(LungeCountGLMM)
+capture.output(GLMMSummary_LungeCount, file = "GLMMSummary_LungeCount.txt")
+
+
+plot(allEffects(LungeCountGLMM)) #shows the relationship shown the the summary
+#exponentiating the coefficient makes it an odds, like in: odds are 5:1 on a horse (exp(beta_0) = 5). 
+#Effects are then multiplicative, like in: under condition x, the odds increase by factor 2 (exp(beta_x) = 2)
 
 
 # includes speciescode as a variable. this isn't as useful as including TL. they are redundant if both included. 

@@ -1,6 +1,8 @@
 #Figure 1 Filtration Paper
 
-## Engulfment Groups
+## Load Packages and Functions ----
+
+install.packages("smatr")
 
 library(plyr)
 library(smatr)
@@ -14,6 +16,9 @@ abbr_binom <- function(binom) {
         sep = ".")
 }
 
+# Input Data and Arrange ----
+
+# Engulfment  ----
 engulfment <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 1- Scaling/lomrmwmeasures.csv")
 engulfmentmw <- engulfment %>% 
   mutate(SpeciesFull = case_when(
@@ -29,7 +34,7 @@ engulfMW <- ggplot(engulfmentmw, aes(x = LogTL, y = LogMW)) +
 engulfMW  
   
 
-## Baleen Area
+# Baleen Area ----
 
 BA <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/BAforols.csv")
 baleenarea <- BA %>% 
@@ -49,7 +54,7 @@ baleen <- ggplot(baleenarea, aes(x = LogTL, y = LogBA)) +
 
 baleen
 
-## combine two data frames
+# Combine two data frames -----
 Fig1 <- ggplot() +
   geom_point(data = engulfmentmw,
              aes(x = LogTL, y = LogMW,
@@ -80,6 +85,7 @@ Fig1 <- ggplot() +
   guides(shape=guide_legend("Species")) +
   theme(legend.text = element_text(size=10, 
                                    face="italic"))
+
 Fig1
 
 
