@@ -72,11 +72,9 @@ hist(log10(FilterTimebySize$meandepthoflunge))
 
 
 
-FilterTimeGLMM <- glmer(meanpurge1 ~ Mean_Lunges_z + 
-                          Mean_Depth_z + 
-                          TL_z + 
-                          Dive_Length_z)+
-                          (1 | whaleID)
+FilterTimeGLMM <- lmer(meanpurge1 ~ TL_z +
+                          (1 | whaleID), data = FilterTimebySize, family = "gaussian")
+summary(FilterTimeGLMM)
 
 
 
