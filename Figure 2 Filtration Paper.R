@@ -147,18 +147,28 @@ PlotHundredFifty
 
 
 #Violin ----
+Fiftyandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_50",
+         response == "Y")
+Hundredandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_100",
+         response =="Y")
+HundredFiftyandbelow <- LungesPerDive_raw %>% 
+  filter(depthcat == "dive_150",
+         response =="Y")
+
 
 PlotFifty <- ggplot(data = Fiftyandbelow, 
                       aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
   geom_violin()+
-  geom_jitter(shape=16, position=position_jitter(0.2))+
+  geom_jitter(position=position_jitter(0.02))+ #i dont think it looks very good 
   labs(x = "log Total Length (m)",
        y = "Lunges Per Dive")
 
 
 PlotHundred <- ggplot(data = Hundredandbelow, 
                     aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
-  geom_violin()+
+  geom_violin() +
   labs(x = "log Total Length (m)",
        y = "Lunges Per Dive")
 
