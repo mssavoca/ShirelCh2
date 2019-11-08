@@ -15,6 +15,7 @@ for i = 1:length(filenames) %finding LungeTable files of the selected whales
     n = size(LungeTable, 1);
      
     LungeTable.whaleID(1:n,1)=repmat({whaleID},n,1);
+    FilterTimes.TL(1:n,1)=repmat({TL}, n,1);
     if i == 1;
         LungeTableAll = LungeTable;
     else

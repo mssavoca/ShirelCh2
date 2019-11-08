@@ -49,35 +49,90 @@ for(i in 1:length(dives$whaleID)) {
 lunges <- left_join(lunges,select(dives,c("whaleID", "Dive_Num", "TL") ), by = c("whaleID", "Dive_Num"))
 
 
+# .CSV with Completed Lunge Table ----
 write.table(lunges, file = "CompleteLungesandDives.csv", sep = ",", col.names = NA,
                qmethod = "double")
 
 
 
-# Graphing ----
-FilterTimes <- lunges%>%
-  filter(TL.y > 6) %>% #made it 6 m
-  filter(depth > 50) %>% 
+# Filter Time by Size (Raw) ----
+FilterTime_Raw <- lunges%>%
+  filter(TL.y > 6, depth >50, purge1 >1) %>% 
+  mutate(SpeciesCode = substr(whaleID, 1, 2),
+         SciName = case_when(
+           SpeciesCode == "bw" ~ "Balaenoptera musculus",
+           SpeciesCode == "bp" ~ "Balaenoptera physalus",
+           SpeciesCode == "mn" ~ "Megaptera novaeangliae",
+           SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
+         TL_z = as.numeric(scale(TL.y)),
+         Depth_z = as.numeric(scale(depth)))
+
+
+FilterPlot <- ggplot(data = FilterTimes, aes(y = log(purge1), x = log(TL.y))) +
+                       geom_point(aes(color = SpeciesCode))
+
+FilterPlot
+
+
+# GLMM for Filter Time ----
+# This uses the raw data to provide more data points
+
+#plot to determine distribution
+hist(log10(FilterTime_Raw$purge1)) #looks poisson to me 
+hist(scale(FilterTime_Raw$purge1))
+hist(FilterTime_Raw$purge1)
+hist(log10(FilterTime_Raw$TL_z))
+hist(log10(FilterTime_Raw$TL.y))
+
+
+FilterTimeGLMM1 <- glmer(purge1 ~ TL_z +
+                (1 | whaleID),
+                data = FilterTime_Raw, family = "poisson")
+
+summary(FilterTimeGLMM1)
+plot(allEffects(FilterTimeGLMM1))
+
+
+
+
+
+
+
+
+# Filter Time by Size (Means) ----
+FilterTimebySize <- read_csv("FilterTimesMin.csv") %>%
+  filter(TL > 6) %>% #made it 6 m
+  filter(meandepthoflunge > 50) %>% 
   mutate(SpeciesCode = substr(whaleID, 1, 2),
          SciName = case_when(
            SpeciesCode == "bw" ~ "Balaenoptera musculus",
            SpeciesCode == "bp" ~ "Balaenoptera physalus",
            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
            SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"))
-#          
 
-FilterPlot <- ggplot(data = FilterTimes, aes(x = TL.y, y= purge1)) +
-  geom_point()
+## I'm using the min filter times sheet because that should contain the most filter times and the greatest range of depth
 
-FilterPlot
+FilterbySize <- ggplot() +
+  geom_point(data = FilterTimebySize, aes (y = log10(meanpurge1), x = log10(TL), shape=abbr_binom(SciName), color = meandepthoflunge, size = meandepthoflunge), alpha = 0.8)+  
+  scale_color_gradientn(colours = c("skyblue2",
+                                    "deepskyblue2",
+                                    "dodgerblue2", "royalblue",
+                                    "mediumblue", "navy", "midnightblue"))+
+  geom_smooth(data = FilterTimebySize, aes(x = log10(TL), y = log10(meanpurge1)), method = "lm",se = FALSE, color = "red") +
+  geom_abline(slope = 1.8, linetype = 2) +
+  labs(x = "log Total Length (m)",
+       y = "log Purge Time (s)") +
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold")) + 
+  guides(color=guide_legend("Lunge Depth (m)")) +
+  guides(size=guide_legend("Lunge Depth (m)")) +
+  guides(shape=guide_legend("Species")) +
+  theme(legend.text = element_text(size=10, 
+                                   face="italic"))
 
-FilterPlot <- ggplot() +
-  geom_point(data = FilterTimes, 
-             aes(y = log(purge1), x = log(TL.y)), aes(color = SpeciesCode)) 
-  geom_smooth(data = FilterTimes, aes(x = log(TL.y), y = log(purge1)), method = "lm",se = FALSE, color = "red") +
-  geom_abline(slope = 1.8, linetype = 2) 
-
-FilterPlot
+FilterbySize
+  
 
 
 
