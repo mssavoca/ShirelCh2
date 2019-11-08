@@ -29,25 +29,29 @@ dives <- read_csv(filename)
 ## Select the masterLungeTable file
 lungeFile <-file.choose()
 lunges  <- read_csv(lungeFile)
-
 lunges$Dive_Num <- NA
-lunges$TLm <-  NA
-
 ## Append DiveNum to Lunge Table
 for(i in 1:length(dives$whaleID)) {
   for(j in 1:length(lunges$LungeI)){
     if(lunges$whaleID[j] == dives$whaleID[i] && lunges$LungeI[j] >= dives$startI[i] && lunges$LungeI[j] <= dives$endI[i])
       lunges$Dive_Num[j] = dives$divenumber[i]
+      lunges$TL[j] = dives$TL[i]
   }
 }
 
-## Append TL to Lunge Table---
-for(i in 1:length(dives$whaleID)) {
-  for(j in 1:length(lunges$LungeI)){
-    if(lunges$whaleID[j] == dives$whaleID[i] && lunges$LungeI[j] == dives$TL[i])
-      lunges$TLm[j] = dives$TL[i]
-  }
-}
+
+dives <- dives %>% 
+  mutate(whaleID = str_remove_all(ID, "[']"))
+
+## Append TL to Lunge Table--- joining to left side which is lunges. will matc the length of thing on left side 
+lunges <- left_join(lunges,select(dives,c("whaleID", "Dive_Num", "TL") ), by = c("whaleID", "Dive_Num"))
+
+# for(i in 1:length(dives$whaleID)) {
+#   for(j in 1:length(lunges$LungeI)){
+#     if(lunges$whaleID[j] == dives$whaleID[i] && lunges$LungeI[j] == dives$TL[i])
+#       lunges$TLm[j] = dives$TL[i]
+#   }
+# }
 
 
 write.table(lunges, file = "MasterLungesandDives.csv", sep = ",", col.names = NA,

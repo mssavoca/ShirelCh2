@@ -151,6 +151,7 @@ PlotHundredFifty
 PlotFifty <- ggplot(data = Fiftyandbelow, 
                       aes(x=TL, y= Lunge_Count,  fill = SpeciesCode, color = SpeciesCode, shape = SpeciesCode))+
   geom_violin()+
+  geom_jitter(shape=16, position=position_jitter(0.2))+
   labs(x = "log Total Length (m)",
        y = "Lunges Per Dive")
 
