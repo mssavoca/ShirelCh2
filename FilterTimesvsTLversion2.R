@@ -64,8 +64,13 @@ FilterTime_Raw <- lunges%>%
            SpeciesCode == "bp" ~ "Balaenoptera physalus",
            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
            SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
+         whaleID = factor(whaleID),
          TL_z = as.numeric(scale(TL.y)),
-         Depth_z = as.numeric(scale(depth)))
+         Depth_z = as.numeric(scale(depth))) 
+
+
+%>% 
+  rename(TL = "TL.y")
 
 
 FilterPlot <- ggplot(data = FilterTimes, aes(y = log(purge1), x = log(TL.y))) +
@@ -82,12 +87,12 @@ hist(log10(FilterTime_Raw$purge1)) #looks poisson to me
 hist(scale(FilterTime_Raw$purge1))
 hist(FilterTime_Raw$purge1)
 hist(log10(FilterTime_Raw$TL_z))
-hist(log10(FilterTime_Raw$TL.y))
+hist(scale(FilterTime_Raw$TL.y))
 
 
-FilterTimeGLMM1 <- glmer(purge1 ~ TL_z +
+FilterTimeGLMM1 <- lmer(purge1 ~ TL.y +
                 (1 | whaleID),
-                data = FilterTime_Raw, family = "poisson")
+                data = FilterTime_Raw, family = "gaussian")
 
 summary(FilterTimeGLMM1)
 plot(allEffects(FilterTimeGLMM1))
