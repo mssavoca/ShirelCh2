@@ -49,6 +49,12 @@ for(i in 1:length(dives$whaleID)) {
 lunges <- left_join(lunges,select(dives,c("whaleID", "Dive_Num", "TL") ), by = c("whaleID", "Dive_Num"))
 
 
+FilterTime_Raw <- read_csv("FilterTime_Raw.csv") %>% 
+  select(-c(X1, X1_1, TL.x)) %>% 
+  rename(TL = "TL.y") %>% 
+  mutate(whaleID = factor(whaleID))
+
+
 # .CSV with Completed Lunge Table ----
 write.table(lunges, file = "CompleteLungesandDives.csv", sep = ",", col.names = NA,
                qmethod = "double")
@@ -68,13 +74,17 @@ FilterTime_Raw <- lunges%>%
          TL_z = as.numeric(scale(TL.y)),
          Depth_z = as.numeric(scale(depth))) 
 
+write.table(FilterTime_Raw, file = "FilterTime_Raw.csv", sep = ",", col.names = NA,
+            qmethod = "double")
+
 
 %>% 
   rename(TL = "TL.y")
 
 
-FilterPlot <- ggplot(data = FilterTimes, aes(y = log(purge1), x = log(TL.y))) +
-                       geom_point(aes(color = SpeciesCode))
+FilterPlot <- ggplot(data = FilterTime_Raw, aes(y = log(purge1), x = log(TL.y))) +
+                       geom_point(aes(color = SpeciesCode), alpha = .1)+
+  geom_smooth(method = "lm")
 
 FilterPlot
 
@@ -90,16 +100,18 @@ hist(log10(FilterTime_Raw$TL_z))
 hist(scale(FilterTime_Raw$TL.y))
 
 
-FilterTimeGLMM1 <- lmer(purge1 ~ TL.y +
-                (1 | whaleID),
-                data = FilterTime_Raw, family = "gaussian")
+FilterTimeGLMM1 <- lmer(log10(purge1) ~ log10(TL.y) +
+                (1|whaleID),
+                data = FilterTime_Raw)
+#takes into account that each indiv should be accounted for and each species should be accounted for 
+#need to do lmer because the lunges are nested within an inivid and if you dont do lmer you wont be taking those into cacount
 
 summary(FilterTimeGLMM1)
 plot(allEffects(FilterTimeGLMM1))
 
 
 
-
+coef(lm(log10(purge1) ~ log10(TL.y), data = FilterTime_Raw))
 
 
 

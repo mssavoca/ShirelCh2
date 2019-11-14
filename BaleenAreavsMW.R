@@ -21,6 +21,7 @@ abbr_binom <- function(binom) {
 # Engulfment  ----
 engulfment <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 1- Scaling/lomrmwmeasures.csv")
 engulfmentmw <- engulfment %>% 
+  select(-c(Input:Species_1, X1)) %>% 
   mutate(SpeciesFull = case_when(
     Species == "Blue Whale" ~ "B. musculus",
     Species == "Fin Whale" ~ "B. physalus",
@@ -64,7 +65,7 @@ Fig1 <- ggplot() +
                  color= SpeciesFull, shape= SpeciesFull), size = 2.5, alpha = .6) +
   geom_smooth(data = engulfmentmw, 
              aes(x = LogTL, y = LogMW, color = SpeciesFull), 
-             method = "lm",se = FALSE) +
+             method = "lm",se = FALSE)+ 
   geom_smooth(data = engulfmentmw, 
               aes(x = LogTL, y = LogMW), 
               method = "lm",se = FALSE, color="red") +
@@ -74,8 +75,8 @@ Fig1 <- ggplot() +
   geom_smooth(data = baleenarea, 
               aes(x = LogTL, y = LogBA), 
               method = "lm", se = FALSE) +
-  geom_abline(slope = 2, intercept = -1.8, linetype = "dashed", color="blue") + 
-  geom_abline(slope = 3, intercept = 1, linetype = "dashed", color="red") + 
+  geom_abline(slope = 1.8, intercept = -1.8, linetype = "dashed", color="blue") + 
+  geom_abline(slope = 3.7, intercept = 0.25, linetype = "dashed", color="red") + 
   scale_y_continuous(sec.axis = sec_axis(~., name = "Baleen Area [m]")) +
   xlim(0.5, 1.8) +
   theme_classic() +
@@ -89,9 +90,27 @@ Fig1 <- ggplot() +
 Fig1
 
 
+# GLMM and MCMC ----
 
-
+#Original Attempt
 coef(lm(LogMW ~ LogTL, data = engulfmentmw))
 coef(lm(LogBA ~ LogTL, data = filter(baleenarea, LogTL >0)))
+
+#GLMM for MW
+
+MWGLMM1 <- lmer(log10(MW) ~ log10(TL) + (1|SpeciesFull), 
+           data = engulfmentmw)
+summary(MWGLMM1)
+
+#GLMM for BA
+BAGLMM1 <- lmer(LogBA ~ LogTL + (1|SpeciesFull), 
+                data = baleenarea)
+summary(BAGLMM1)
+
+#MCMC
+
+
+
+
 
 
