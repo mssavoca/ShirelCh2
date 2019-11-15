@@ -85,6 +85,7 @@ species_summary <- LungesPerDive_raw %>%
 
 
 
+
 #Plotting all data - Lunge Count vs TL ----
 
 Fig2 <-  ggplot(data = LungesPerDive_raw, 
@@ -123,6 +124,7 @@ lungesperdive_bar <- ggplot(data = species_summary,
        y = "Weighted Mean, Lunges Per Dive") +
   theme_classic()
 lungesperdive_bar
+
 
 
 
@@ -180,7 +182,8 @@ PlotFifty <- ggplot(data = Fiftyandbelow, aes(x=log(TL), y= log(Lunge_Count), fi
         axis.title=element_text(size=12,face="bold"))+
   guides(fill = guide_legend("Species"))+
   theme(legend.text = element_text(size=10, 
-                                   face="italic"))
+                                   face="italic"))+
+  theme_classic()
 
 PlotFifty
 
@@ -194,7 +197,8 @@ PlotHundred <- ggplot(data = Hundredandbelow,
         axis.title=element_text(size=12,face="bold"))+
   guides(fill = guide_legend("Species"))+
   theme(legend.text = element_text(size=10, 
-                                   face="italic"))
+                                   face="italic"))+
+  theme_classic()
 
 
 PlotHundredFifty <- ggplot(data = HundredFiftyandbelow, 
@@ -207,7 +211,8 @@ PlotHundredFifty <- ggplot(data = HundredFiftyandbelow,
         axis.title=element_text(size=12,face="bold"))+
   guides(fill = guide_legend("Species"))+
   theme(legend.text = element_text(size=10, 
-                                   face="italic"))
+                                   face="italic"))+
+  theme_classic()
 
 
 ggarrange(PlotFifty, PlotHundred, PlotHundredFifty + 

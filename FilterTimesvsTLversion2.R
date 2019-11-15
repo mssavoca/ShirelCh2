@@ -14,21 +14,27 @@ pkgTest("ggplot2")
 pkgTest("lubridate")
 pkgTest("R.matlab")
 pkgTest("rstudioapi")
+pkgTest("tidyverse")
+pkgTest("lme4")
+pkgTest("MCMCglmm")
 
+
+# Only Necessary for Initial Calculation ----
 # Set the Working Directory to the path of source file
 current_path = rstudioapi::getActiveDocumentContext()$path 
 setwd(dirname(current_path ))
 rm(current_path)
 
 
-#### Import MasterLunges Per Dive ####
+### Import MasterLunges Per Dive ###
+
 filename <- file.choose() #Dive Sheet for Filter Times
 dives <- read_csv(filename)
 
 dives <- dives %>% 
   mutate(whaleID = str_remove_all(ID, "[']")) #remove ' and add whaleID 
 
-#### Load Filter Times ####
+#### Load Filter Times ###
 ## Select the masterLungeTable file
 lungeFile <-file.choose() #called master lunges and dives
 lunges  <- read_csv(lungeFile)
@@ -55,9 +61,10 @@ FilterTime_Raw <- read_csv("FilterTime_Raw.csv") %>%
   mutate(whaleID = factor(whaleID))
 
 
-# .CSV with Completed Lunge Table ----
+# .CSV with Completed Lunge Table ---
 write.table(lunges, file = "CompleteLungesandDives.csv", sep = ",", col.names = NA,
                qmethod = "double")
+
 
 
 
@@ -70,32 +77,87 @@ FilterTime_Raw <- lunges%>%
            SpeciesCode == "bp" ~ "Balaenoptera physalus",
            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
            SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
-         whaleID = factor(whaleID),
-         TL_z = as.numeric(scale(TL.y)),
-         Depth_z = as.numeric(scale(depth))) 
+         whaleID = factor(whaleID))
+        # TL_z = as.numeric(scale(TL.y)), don't need because only comparing FT and TL
+        # Depth_z = as.numeric(scale(depth))) 
 
 write.table(FilterTime_Raw, file = "FilterTime_Raw.csv", sep = ",", col.names = NA,
             qmethod = "double")
 
 
+FilterTime_Raw <- read_csv("FilterTime_Raw.csv") 
+FilterTime_Raw <- FilterTime_Raw %>% 
+  select(-c(X1, X1_1, TL.x)) %>% 
+  #rename(c("TL" = "TL.y")) %>% 
+  mutate(whaleID = factor(whaleID))
 
 
-FilterPlot <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10(TL.y))) +
-                       geom_point(aes(color = SpeciesCode), alpha = .1)+
-  geom_smooth(method = "lm") + 
-  geom_abline(slope = 1.93951, intercept = -0.88938, linetype = "solid", color="red") #lmer+
+#Graphing ----
+FilterPlot_dot <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10(TL.y))) +
+                       geom_point(aes(color = abbr_binom(SciName)), alpha = .1)+
+  #geom_smooth(method = "lm") + 
+  geom_abline(slope = 1.79075, intercept = -0.69223, linetype = "dotdash", color="black")+
+  theme_classic() +
+  labs(x = "log TL (m)") +
+  labs(y = "log Purge (s)") +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold")) + 
+  guides(color=guide_legend("Species")) +
+  guides(size=guide_legend("Species")) +
+  guides(shape=guide_legend("Species")) +
+  theme(legend.text = element_text(size=10, 
+                                   face="italic"))
   
 
-FilterPlot
+FilterPlot_dot
 
 
-FilterPlot_violin <- ggplot(data = FilterTime_Raw, aes(y = log(purge1), x = log(TL.y), fill = SciName)) +
-  geom_violin() + 
-  geom_abline(slope = 1.93951, intercept = -0.88938, linetype = "solid", color="red")
+# FilterPlot_violin <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10(TL.y), fill = SciName)) +
+#   geom_violin() + 
+#   geom_abline(slope = 1.79075, intercept = -0.69223, linetype = "solid", color="red")
+# 
+# FilterPlot_violin
 
-FilterPlot_violin
 
-# GLMM for Filter Time ----
+# Filter Time Statistics ----
+m1 <- lmer(log10(purge1) ~ log10(TL.y) + (1|whaleID), 
+data = FilterTime_Raw)
+summary(m1) # slope of purge 1 is 1.79075, has no problem converging 
+
+
+purgelm <- lm(log10(purge1) ~ log10(TL.y), data = FilterTime_Raw)
+summary(purgelm) #slope of purge 1 is 1.93951
+
+# MCMCglmm so that we can get a distribution of parameter estimates and thus a confidence interval of the slope---- 
+MCMCglmm_FT_TL <- MCMCglmm(log10(purge1) ~ log10(TL.y),
+                           random = ~ whaleID,
+                           data = FilterTime_Raw, 
+                           family = "gaussian",
+                           nitt = 11000, thin = 1, burnin = 1000,
+                           pr = TRUE, # To save the posterior mode of for each level or category in your random effect(s) we use pr = TRUE, which saves them in the $Sol part of the model output.
+                           verbose = TRUE)
+summary(MCMCglmm_FT_TL)
+
+
+model_param_values <- as.data.frame(MCMCglmm_FT_TL$Sol) #plot quantile 97.5 and 2.5 
+
+
+# plot parameter distributions
+slope_distributions <- ggplot(model_param_values) +
+  geom_density(aes(`log10(TL.y)`), color = "dark blue") +
+  labs(x = "slope parameter distribution") +
+  #geom_vline(xintercept = 1.7906,  linetype = "dashed", color = "dark blue") +   # predicted slope
+  #geom_vline(xintercept = 1.8,  linetype = "dotted", color = "red") +           # slope for the scaling of baleen area
+  #geom_vline(xintercept = 3.7,  linetype = "dotted", color = "red") +           # slope for the scaling of MW
+  xlim(1,2.7) +
+  theme_classic()
+slope_distributions 
+
+
+
+#dev.copy2pdf(file="slope_distributions.pdf", width=4, height=5)
+
+# OLD VERSION GLMM for Filter Time ----
 # This uses the raw data to provide more data points
 
 #plot to determine distribution
@@ -118,6 +180,7 @@ plot(allEffects(FilterTimeGLMM1))
 
 
 coef(lm(log10(purge1) ~ log10(TL.y), data = FilterTime_Raw))
+
 
 
 
