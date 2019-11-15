@@ -78,16 +78,22 @@ write.table(FilterTime_Raw, file = "FilterTime_Raw.csv", sep = ",", col.names = 
             qmethod = "double")
 
 
-%>% 
-  rename(TL = "TL.y")
 
 
-FilterPlot <- ggplot(data = FilterTime_Raw, aes(y = log(purge1), x = log(TL.y))) +
+FilterPlot <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10(TL.y))) +
                        geom_point(aes(color = SpeciesCode), alpha = .1)+
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm") + 
+  geom_abline(slope = 1.93951, intercept = -0.88938, linetype = "solid", color="red") #lmer+
+  
 
 FilterPlot
 
+
+FilterPlot_violin <- ggplot(data = FilterTime_Raw, aes(y = log(purge1), x = log(TL.y), fill = SciName)) +
+  geom_violin() + 
+  geom_abline(slope = 1.93951, intercept = -0.88938, linetype = "solid", color="red")
+
+FilterPlot_violin
 
 # GLMM for Filter Time ----
 # This uses the raw data to provide more data points

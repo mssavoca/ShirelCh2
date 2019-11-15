@@ -8,6 +8,7 @@ library(plyr)
 library(smatr)
 library(ggplot2)
 library(tidyverse)
+library(lme4)
 
 # Abbreviate a binomial e.g. Balaenoptera musculus -> B. musculus
 abbr_binom <- function(binom) {
@@ -19,9 +20,10 @@ abbr_binom <- function(binom) {
 # Input Data and Arrange ----
 
 # Engulfment  ----
-engulfment <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 1- Scaling/lomrmwmeasures.csv")
+engulfment <- read.csv("lomrmwmeasures.csv")
 engulfmentmw <- engulfment %>% 
-  select(-c(Input:Species_1, X1)) %>% 
+  unite("whaleID", whaleIDSp:whaleIDNumber, remove = FALSE) %>% 
+  select(-c(Input:Species.1)) %>% 
   mutate(SpeciesFull = case_when(
     Species == "Blue Whale" ~ "B. musculus",
     Species == "Fin Whale" ~ "B. physalus",
@@ -30,7 +32,7 @@ engulfmentmw <- engulfment %>%
   filter(Species %in% c("Blue Whale", "Fin Whale", "Humpback Whale", "Minke Whale"))
 
 
-engulfMW <- ggplot(engulfmentmw, aes(x = LogTL, y = LogMW)) +
+engulfMW <- ggplot(engulfmentmw, aes(x = log10(TL), y = log10(MW))) +
   geom_point(aes(color=Species, shape= Species), size = 2)
 engulfMW  
   
@@ -39,7 +41,6 @@ engulfMW
 
 BA <- read_csv("C:/Users/Shirel/Documents/Goldbogen Lab/Thesis/Chapter 2- Filtration/BAforols.csv")
 baleenarea <- BA %>% 
-  select(LogTL, LogBA, Species) %>% 
   mutate(SpeciesFull = case_when(
     Species == "Blue Whale" ~ "B. musculus",
     Species == "Fin Whale" ~ "B. physalus",
@@ -50,7 +51,7 @@ baleenarea <- BA %>%
 
 
 
-baleen <- ggplot(baleenarea, aes(x = LogTL, y = LogBA)) +
+baleen <- ggplot(baleenarea, aes(x = log10(TL), y = log10(BA))) +
   geom_point(aes(color=Species, shape= Species), size = 2)
 
 baleen
@@ -58,27 +59,29 @@ baleen
 # Combine two data frames -----
 Fig1 <- ggplot() +
   geom_point(data = engulfmentmw,
-             aes(x = LogTL, y = LogMW,
+             aes(x = log10(TL), y = log10(MW),
                   color= SpeciesFull, shape = SpeciesFull), size = 2.5, alpha = .6) +
   geom_point(data = baleenarea,
-             aes(x = LogTL, y = LogBA,
+             aes(x = log10(TL), y = log10(BA),
                  color= SpeciesFull, shape= SpeciesFull), size = 2.5, alpha = .6) +
   geom_smooth(data = engulfmentmw, 
-             aes(x = LogTL, y = LogMW, color = SpeciesFull), 
+             aes(x = log10(TL), y = log10(MW), color = SpeciesFull), 
              method = "lm",se = FALSE)+ 
   geom_smooth(data = engulfmentmw, 
-              aes(x = LogTL, y = LogMW), 
+              aes(x = log10(TL), y = log10(MW)), 
               method = "lm",se = FALSE, color="red") +
   geom_smooth(data = baleenarea, 
-             aes(x = LogTL, y = LogBA, color= SpeciesFull),
+             aes(x = log10(TL), y = log10(BA), color= SpeciesFull),
               method = "lm", se = FALSE) + 
   geom_smooth(data = baleenarea, 
-              aes(x = LogTL, y = LogBA), 
+              aes(x = log10(TL), y = log10(BA)), 
               method = "lm", se = FALSE) +
-  geom_abline(slope = 1.8, intercept = -1.8, linetype = "dashed", color="blue") + 
-  geom_abline(slope = 3.7, intercept = 0.25, linetype = "dashed", color="red") + 
+  geom_abline(slope = 1.8248, intercept = -1.8553, linetype = "dashed", color="blue") + 
+  geom_abline(slope = 3.707748, intercept = 0.108239, linetype = "dashed", color="red") + 
   scale_y_continuous(sec.axis = sec_axis(~., name = "Baleen Area [m]")) +
   xlim(0.5, 1.8) +
+  labs(x = "log TL (m)") +
+  labs(y = "log MW (L)") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold"))+
@@ -92,24 +95,50 @@ Fig1
 
 # GLMM and MCMC ----
 
-#Original Attempt
+# Regular lm for MW
 coef(lm(LogMW ~ LogTL, data = engulfmentmw))
+
+#Regular lm for BA
 coef(lm(LogBA ~ LogTL, data = filter(baleenarea, LogTL >0)))
 
 #GLMM for MW
+# does not converge for some reason 
 
-MWGLMM1 <- lmer(log10(MW) ~ log10(TL) + (1|SpeciesFull), 
+MW_GLMM1 <- lmer(log10(MW) ~ log10(TL) + (1|SpeciesFull), 
            data = engulfmentmw)
-summary(MWGLMM1)
+summary(MW_GLMM1)
 
-#GLMM for BA
-BAGLMM1 <- lmer(LogBA ~ LogTL + (1|SpeciesFull), 
+#GLMM for BA 
+#no need to log10 here because I already logged it in excel (don't know why I did but I did)
+BA_GLMM1 <- lmer(log10(BA) ~ log10(TL) + (1|SpeciesFull), 
                 data = baleenarea)
-summary(BAGLMM1)
+summary(BA_GLMM1)
 
-#MCMC
+#MCMC for MW
 
 
+MCMCglmm_MW_TL <- MCMCglmm(log10(MW) ~ log10(TL),
+                           random = ~ SpeciesFull, #should I use species of whaleID? I chose SpeciesFull because technically none are individuals 
+                                                    #They are all based off approximations from other whales.
+                           data = engulfmentmw, 
+                           family = "gaussian",
+                           nitt = 11000, thin = 1, burnin = 1000,
+                           pr = TRUE, # To save the posterior mode of for each level or category in your random effect(s) we use pr = TRUE, which saves them in the $Sol part of the model output.
+                           verbose = TRUE)
+summary(MCMCglmm_MW_TL)
+
+
+# MCMC for BA
+
+MCMCglmm_BA_TL <- MCMCglmm(log10(BA) ~ log10(TL),
+                           random = ~ SpeciesFull, #should I use species of whaleID? I chose SpeciesFull because technically none are individuals 
+                                                   #They are all based off approximations from other whales.
+                           data = baleenarea, 
+                           family = "gaussian",
+                           nitt = 11000, thin = 1, burnin = 1000,
+                           pr = TRUE, # To save the posterior mode of for each level or category in your random effect(s) we use pr = TRUE, which saves them in the $Sol part of the model output.
+                           verbose = TRUE)
+summary(MCMCglmm_BA_TL)
 
 
 
