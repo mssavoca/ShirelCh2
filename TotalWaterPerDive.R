@@ -5,6 +5,8 @@
 install.packages("plot3D")
 library("plot3D")
 library(tidyverse)
+library(lme4)
+library(MCMCglmm)
 
 #Input Data ----
 #raw data
@@ -66,8 +68,8 @@ MWlmer <- lmer(log10(Total.Water.Per.Dive..kg.) ~ log10(TL) + (1|ID),
 summary(MWlmer) # slope of purge 1 is 1.79075, has no problem converging 
 
 
-MWlm <- lm(log10(Total.Water.Per.Dive..kg.) ~ log10(TL), data = TotalWaterPerDive)
-summary(MWlm) #slope of purge 1 is 1.93951
+#MWlm <- lm(log10(Total.Water.Per.Dive..kg.) ~ log10(TL), data = TotalWaterPerDive)
+#summary(MWlm) #slope of purge 1 is 1.93951
 
 MCMCglmm_MW_TL <- MCMCglmm(log10(Total.Water.Per.Dive..kg.) ~ log10(TL),
                            random = ~ ID,
@@ -80,7 +82,7 @@ summary(MCMCglmm_MW_TL)
 
 
 
-### total water per dive, made mass specific by TL, raw data style
+### total water per dive divided by mass, by TL, raw data style
 TotalWater_MassSpecific <- ggplot() +
   geom_point(data = TotalWaterPerDive, 
              aes (y = log10(MR), x = log10(TL), 
@@ -95,6 +97,8 @@ TotalWater_MassSpecific <- ggplot() +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
+  labs(x = "log TL (m)") +
+  labs(y = "log Total Water Per Dive / Mass") +
   guides(color=guide_legend("Lunge Depth (m)")) +
   guides(size=guide_legend("Lunge Depth (m)")) +
   guides(shape=guide_legend("Species")) +

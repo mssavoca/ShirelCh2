@@ -1,4 +1,10 @@
 #### Load Packages ####
+abbr_binom <- function(binom) {
+  paste(str_sub(binom, 1, 1), 
+        str_extract(binom, " .*"), 
+        sep = ".")
+}
+
 pkgTest <- function(x)
 {
   if (!require(x,character.only = TRUE))
@@ -57,20 +63,8 @@ lunges <- left_join(lunges,select(dives,c("whaleID", "Dive_Num", "TL") ), by = c
 
 FilterTime_Raw <- read_csv("FilterTime_Raw.csv") %>% 
   select(-c(X1, X1_1, TL.x)) %>% 
-  rename(TL = "TL.y") %>% 
-  mutate(whaleID = factor(whaleID))
-
-
-# .CSV with Completed Lunge Table ---
-write.table(lunges, file = "CompleteLungesandDives.csv", sep = ",", col.names = NA,
-               qmethod = "double")
-
-
-
-
-# Filter Time by Size (Raw) ----
-FilterTime_Raw <- lunges%>%
-  filter(TL.y > 6, depth >50, purge1 >1) %>% 
+  #rename(TL = "TL.y") %>% 
+  filter(TL.y > 6, depth >50, purge1 >2) %>% 
   mutate(SpeciesCode = substr(whaleID, 1, 2),
          SciName = case_when(
            SpeciesCode == "bw" ~ "Balaenoptera musculus",
@@ -78,11 +72,31 @@ FilterTime_Raw <- lunges%>%
            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
            SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
          whaleID = factor(whaleID))
-        # TL_z = as.numeric(scale(TL.y)), don't need because only comparing FT and TL
-        # Depth_z = as.numeric(scale(depth))) 
 
-write.table(FilterTime_Raw, file = "FilterTime_Raw.csv", sep = ",", col.names = NA,
-            qmethod = "double")
+
+
+# # .CSV with Completed Lunge Table ---
+# write.table(lunges, file = "CompleteLungesandDives.csv", sep = ",", col.names = NA,
+#                qmethod = "double")
+# 
+# 
+# 
+# 
+# # Filter Time by Size (Raw) ----
+# FilterTime_Raw <- lunges%>%
+#   filter(TL.y > 6, depth >50, purge1 >1) %>% 
+#   mutate(SpeciesCode = substr(whaleID, 1, 2),
+#          SciName = case_when(
+#            SpeciesCode == "bw" ~ "Balaenoptera musculus",
+#            SpeciesCode == "bp" ~ "Balaenoptera physalus",
+#            SpeciesCode == "mn" ~ "Megaptera novaeangliae",
+#            SpeciesCode == "bb" ~ "Balaenoptera bonaerensis"),
+#          whaleID = factor(whaleID))
+#         # TL_z = as.numeric(scale(TL.y)), don't need because only comparing FT and TL
+#         # Depth_z = as.numeric(scale(depth))) 
+# 
+# write.table(FilterTime_Raw, file = "FilterTime_Raw.csv", sep = ",", col.names = NA,
+#             qmethod = "double")
 
 
 FilterTime_Raw <- read_csv("FilterTime_Raw.csv") 
@@ -125,8 +139,8 @@ data = FilterTime_Raw)
 summary(m1) # slope of purge 1 is 1.79075, has no problem converging 
 
 
-purgelm <- lm(log10(purge1) ~ log10(TL.y), data = FilterTime_Raw)
-summary(purgelm) #slope of purge 1 is 1.93951
+# purgelm <- lm(log10(purge1) ~ log10(TL.y), data = FilterTime_Raw)
+# summary(purgelm) #slope of purge 1 is 1.93951
 
 # MCMCglmm so that we can get a distribution of parameter estimates and thus a confidence interval of the slope---- 
 MCMCglmm_FT_TL <- MCMCglmm(log10(purge1) ~ log10(TL.y),

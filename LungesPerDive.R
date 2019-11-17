@@ -255,11 +255,33 @@ LungeCountGLMM <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinn
                   Dive_Length_z + 
                   (1| ID), 
                 data = GLMM, family = "poisson")
+
 GLMMSummary_LungeCount <- summary(LungeCountGLMM)
 capture.output(GLMMSummary_LungeCount, file = "GLMMSummary_LungeCount.txt")
 
 
 plot(allEffects(LungeCountGLMM)) #shows the relationship shown the the summary
+
+#Attempt at an MCMC --
+MCMCglmm_LungePerDive <- MCMCglmm(Lunge_Count ~ Mean_Depth_z +
+                                     TL_z + 
+                                     Dive_Length_z,
+                           random = ~ ID,
+                           data = GLMM, 
+                           family = "poisson",
+                           nitt = 11000, thin = 1, burnin = 1000,
+                           pr = TRUE, # To save the posterior mode of for each level or category in your random effect(s) we use pr = TRUE, which saves them in the $Sol part of the model output.
+                           verbose = TRUE)
+summary(MCMCglmm_LungePerDive)
+
+
+model_param_values <- as.data.frame(MCMCglmm_FT_TL$Sol) #plot quantile 97.5 and 2.5 
+
+
+
+
+
+
 #exponentiating the coefficient makes it an odds, like in: odds are 5:1 on a horse (exp(beta_0) = 5). 
 #Effects are then multiplicative, like in: under condition x, the odds increase by factor 2 (exp(beta_x) = 2)
 
