@@ -64,20 +64,21 @@ Fig1 <- ggplot() +
   geom_point(data = baleenarea,
              aes(x = log10(TL), y = log10(BA),
                  color= SpeciesFull, shape= SpeciesFull), size = 2.5, alpha = .6) +
-  geom_smooth(data = engulfmentmw, 
-             aes(x = log10(TL), y = log10(MW), color = SpeciesFull), 
-             method = "lm",se = FALSE)+ 
-  geom_smooth(data = engulfmentmw, 
-              aes(x = log10(TL), y = log10(MW)), 
-              method = "lm",se = FALSE, color="red") +
-  geom_smooth(data = baleenarea, 
-             aes(x = log10(TL), y = log10(BA), color= SpeciesFull),
-              method = "lm", se = FALSE) + 
-  geom_smooth(data = baleenarea, 
-              aes(x = log10(TL), y = log10(BA)), 
-              method = "lm", se = FALSE) +
-  geom_abline(slope = 1.8248, intercept = -1.8553, linetype = "dashed", color="blue") + 
-  geom_abline(slope = 3.707748, intercept = 0.108239, linetype = "dashed", color="red") + 
+  # #geom_smooth(data = engulfmentmw, 
+  #            aes(x = log10(TL), y = log10(MW), color = SpeciesFull), 
+  #            method = "lm",se = FALSE)+ 
+  # geom_smooth(data = engulfmentmw, 
+  #             aes(x = log10(TL), y = log10(MW)), 
+  #             method = "lm",se = FALSE, color="red") +
+  # geom_smooth(data = baleenarea, 
+  #            aes(x = log10(TL), y = log10(BA), color= SpeciesFull),
+  #             method = "lm", se = FALSE) + 
+  # geom_smooth(data = baleenarea, 
+  #             aes(x = log10(TL), y = log10(BA)), 
+  #             method = "lm", se = FALSE) +
+  geom_abline(slope = 1.8248, intercept = -1.8553, linetype = "dashed", color="orange", lwd = 1) + 
+  geom_abline(slope = 3.707748, intercept = 0.108239, linetype = "dashed", color="blue", lwd = 1) + 
+  #geom_abline(slope = 1.7902, intercept = -0.6915, linetype = "dashed", color="purple", lwd = 1) + 
   scale_y_continuous(sec.axis = sec_axis(~., name = "Baleen Area [m]")) +
   xlim(0.5, 1.8) +
   labs(x = "log TL (m)") +
@@ -95,7 +96,7 @@ Fig1
 
 # GLMM and MCMC ----
 
-# Regular lm for MW
+# Regular lm for MWs
 coef(lm(LogMW ~ LogTL, data = engulfmentmw))
 
 #Regular lm for BA
