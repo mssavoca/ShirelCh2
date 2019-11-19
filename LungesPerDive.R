@@ -9,8 +9,6 @@ library(tidyverse)
 library(ggstance)
 library(mgcv)
 library(lme4)
-library(lmerTest)
-library(MuMIn)
 library(ggpubr)
 library(ggplot2)
 library(effects)
@@ -228,9 +226,7 @@ ggarrange(PlotFifty, PlotHundred, PlotHundredFifty +
 
 #Statistics for Lunge Count - GLMM ----
 GLMM <- read_csv("GLMM data.csv") %>% 
-  filter(TL > 6) %>% 
-  filter(Lunge_Count>0) %>% 
-  filter(Mean_Depth >50) %>% 
+  filter(TL > 6, Lunge_Count >0, Mean_Depth > 50) %>% 
   mutate(SpeciesCode = substr(ID, 2, 3),
          ID = str_remove_all(ID, "[']"),
          SciName = case_when(
@@ -241,6 +237,44 @@ GLMM <- read_csv("GLMM data.csv") %>%
          TL_z = as.numeric(scale(TL)),
          Mean_Depth_z = as.numeric(scale(Mean_Depth)),
          Dive_Length_z = as.numeric(scale(Dive_Length)))
+
+
+# Plot Dive Length ----
+
+
+DiveLength_TL <-  ggplot(data = GLMM, aes(x=log10(TL), y= log10(Dive_Length))) +
+                    geom_point(aes(color = Mean_Depth, 
+                                   shape = abbr_binom(SciName))) +
+  geom_smooth(method= lm) +
+    scale_color_gradientn(colours = c("skyblue2",
+                                    "deepskyblue2",
+                                    "dodgerblue2", "royalblue",
+                                    "mediumblue", "navy", "midnightblue"), #blues to mimic ocean depth
+                        name = "Mean Depth (m)") +
+  scale_size_continuous(range = c(0.5, 4)) +
+  #ylim(0, 1.5) +
+  labs(x = "log Total Length (m)",
+       y = " log Dive Length") +
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold")) +
+  guides(color=guide_legend("Lunge Depth (m)")) +
+  guides(size=guide_legend("Lunge Depth (m)")) +
+  guides(shape=guide_legend("Species")) +
+  theme(legend.text = element_text(size=10,
+                                   face="italic"))
+
+
+DiveLength_TL
+
+DiveLength_TL_lm <- lm(log10(Dive_Length) ~ log10(TL), data = GLMM)
+summary(DiveLength_TL_lm)
+
+
+DiveLength_TL<- lmer(log10(Dive_Length) ~ log10(TL) + (1|ID), 
+           data = GLMM)
+summary(DiveLength_TL)
+
 
 
 #Plot to determine distribution. should these be scaled or logged?

@@ -108,16 +108,17 @@ FilterTime_Raw <- FilterTime_Raw %>%
 
 #Graphing ----
 FilterPlot_dot <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10(TL.y))) +
-                       geom_point(aes(color = abbr_binom(SciName)), alpha = .1)+
-  #geom_smooth(method = "lm") + 
-  geom_abline(slope = 1.79075, intercept = -0.69223, linetype = "dotdash", color="black")+
+                       geom_point(aes(color = abbr_binom(SciName),
+                                  shape = SpeciesCode,
+                                  alpha = .1))+
+  geom_smooth(method = glm) + 
+  #geom_abline(slope = 1.79075, intercept = -0.69223, linetype = "dotdash", color="black")+
   theme_classic() +
   labs(x = "log TL (m)") +
-  labs(y = "log Purge (s)") +
+  labs(y = "log Filter Time (s)") +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
   guides(color=guide_legend("Species")) +
-  guides(size=guide_legend("Species")) +
   guides(shape=guide_legend("Species")) +
   theme(legend.text = element_text(size=10, 
                                    face="italic"))
@@ -160,7 +161,7 @@ model_param_values <- as.data.frame(MCMCglmm_FT_TL$Sol) #plot quantile 97.5 and 
 slope_distributions <- ggplot(model_param_values) +
   geom_density(aes(`log10(TL.y)`), color = "dark blue") +
   labs(x = "slope parameter distribution") +
-  #geom_vline(xintercept = 1.7906,  linetype = "dashed", color = "dark blue") +   # predicted slope
+  geom_vline(xintercept = 1.88,  linetype = "dashed", color = "dark blue") +   # predicted slope
   #geom_vline(xintercept = 1.8,  linetype = "dotted", color = "red") +           # slope for the scaling of baleen area
   #geom_vline(xintercept = 3.7,  linetype = "dotted", color = "red") +           # slope for the scaling of MW
   xlim(1,2.7) +
