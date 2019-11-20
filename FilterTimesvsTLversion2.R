@@ -106,20 +106,25 @@ FilterTime_Raw <- FilterTime_Raw %>%
   mutate(whaleID = factor(whaleID))
 
 
+speciescounts<- count(FilterTime_Raw$whaleID, vars = "whaleID")
+
+speciescounts<- table(FilterTime_Raw$whaleID)
+
 #Graphing ----
-FilterPlot_dot <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10(TL.y))) +
+FilterPlot_dot <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10(TL.y), alpha = .1)) +
                        geom_point(aes(color = abbr_binom(SciName),
-                                  shape = SpeciesCode,
-                                  alpha = .1))+
+                                  shape = abbr_binom(SciName)))+
   geom_smooth(method = glm) + 
-  #geom_abline(slope = 1.79075, intercept = -0.69223, linetype = "dotdash", color="black")+
   theme_classic() +
-  labs(x = "log TL (m)") +
-  labs(y = "log Filter Time (s)") +
+        labs(x = "log TL (m)") +
+        labs(y = "log Filter Time (s)") +
+  guides(alpha=FALSE)+
+  scale_color_discrete(name="Species",
+                     labels=c("B. bonaerensis, n = 9", "B. musculus, n = 21", "B. physalus, n = 3", "M. novaeangliae, n = 8"))+
+  scale_shape_discrete(name="Species",
+                       labels=c("B. bonaerensis, n = 9", "B. musculus, n = 21", "B. physalus, n = 3", "M. novaeangliae, n = 8"))+
   theme(axis.text=element_text(size=10),
-        axis.title=element_text(size=12,face="bold")) + 
-  guides(color=guide_legend("Species")) +
-  guides(shape=guide_legend("Species")) +
+        axis.title=element_text(size=10,face="bold")) + 
   theme(legend.text = element_text(size=10, 
                                    face="italic"))
   
