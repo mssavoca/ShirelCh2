@@ -87,7 +87,7 @@ species_summary <- LungesPerDive_raw %>%
 #Plotting all data - Lunge Count vs TL ----
 
 Fig2 <-  ggplot(data = LungesPerDive_raw, 
-                aes(x=TL, y= Lunge_Count,  shape = abbr_binom(SciName), 
+                aes(x=log10(TL), y= log10(Lunge_Count),  shape = abbr_binom(SciName), 
                     color = Mean_Depth, size = Mean_Depth), alpha = 0.8) +
   geom_point() +
   #geom_smooth(method = lm) +
@@ -98,8 +98,8 @@ Fig2 <-  ggplot(data = LungesPerDive_raw,
                         name = "Mean Depth (m)") +
   scale_size_continuous(range = c(0.5, 4)) +
   #ylim(0, 1.5) +
-  labs(x = "log Total Length (m)",
-       y = "Lunges Per Dive") +
+  labs(x = " log Total Length (m)",
+       y = " log Lunges Per Dive") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
@@ -171,11 +171,11 @@ HundredFiftyandbelow <- LungesPerDive_raw %>%
          response =="Y")
 
 
-PlotFifty <- ggplot(data = Fiftyandbelow, aes(x=log(TL), y= log(Lunge_Count), fill = SpeciesFull)) +
+PlotFifty <- ggplot(data = Fiftyandbelow, aes(x=log10(TL), y= Lunge_Count, fill = SpeciesFull)) +
   geom_violin() +
   geom_boxplot(width = 0.1) +
   labs(x = "log Total Length (m)",
-       y = "log Lunges Per Dive") +
+       y = "Lunges Per Dive") +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold"))+
   guides(fill = guide_legend("Species"))+
@@ -186,11 +186,11 @@ PlotFifty <- ggplot(data = Fiftyandbelow, aes(x=log(TL), y= log(Lunge_Count), fi
 PlotFifty
 
 PlotHundred <- ggplot(data = Hundredandbelow, 
-                    aes(x=log(TL), y= log(Lunge_Count),  fill = SpeciesFull))+
+                    aes(x=log10(TL), y= Lunge_Count,  fill = SpeciesFull))+
   geom_violin() +
   geom_boxplot(width = 0.1) +
   labs(x = "log Total Length (m)",
-       y = "log Lunges Per Dive") +
+       y = "Lunges Per Dive") +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold"))+
   guides(fill = guide_legend("Species"))+
@@ -200,11 +200,11 @@ PlotHundred <- ggplot(data = Hundredandbelow,
 
 
 PlotHundredFifty <- ggplot(data = HundredFiftyandbelow, 
-                      aes(x=log(TL), y= log(Lunge_Count),  fill = SpeciesFull))+
+                      aes(x=log10(TL), y= Lunge_Count,  fill = SpeciesFull))+
   geom_violin()+
   geom_boxplot(width = 0.1) +
   labs(x = "log Total Length (m)",
-       y = "log Lunges Per Dive") +
+       y = "Lunges Per Dive") +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold"))+
   guides(fill = guide_legend("Species"))+
@@ -226,7 +226,7 @@ ggarrange(PlotFifty, PlotHundred, PlotHundredFifty +
 
 #Statistics for Lunge Count - GLMM ----
 GLMM <- read_csv("GLMM data.csv") %>% 
-  filter(TL > 6, Lunge_Count >0, Mean_Depth > 50) %>% 
+  filter(TL > 6, Lunge_Count >0, Mean_Depth > 50, Dive_Length < 3000) %>% 
   mutate(SpeciesCode = substr(ID, 2, 3),
          ID = str_remove_all(ID, "[']"),
          SciName = case_when(
@@ -242,7 +242,7 @@ GLMM <- read_csv("GLMM data.csv") %>%
 # Plot Dive Length ----
 
 
-DiveLength_TL <-  ggplot(data = GLMM, aes(x=log10(TL), y= log10(Dive_Length))) +
+DiveLength_TL <-  ggplot(data = GLMM, aes(x=TL, y= Dive_Length)) +
                     geom_point(aes(color = Mean_Depth, 
                                    shape = abbr_binom(SciName))) +
   geom_smooth(method= lm) +
@@ -253,8 +253,8 @@ DiveLength_TL <-  ggplot(data = GLMM, aes(x=log10(TL), y= log10(Dive_Length))) +
                         name = "Mean Depth (m)") +
   scale_size_continuous(range = c(0.5, 4)) +
   #ylim(0, 1.5) +
-  labs(x = "log Total Length (m)",
-       y = " log Dive Length") +
+  labs(x = "Total Length (m)",
+       y = "Dive Length") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) +

@@ -83,22 +83,22 @@ summary(MCMCglmm_MW_TL)
 
 
 ### total water per dive divided by mass, by TL, raw data style
-TotalWater_MassSpecific <- ggplot() +
-  geom_point(data = TotalWaterPerDive, 
-             aes (y = log10(MR), x = log10(TL), 
-                  shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8)+  
+TotalWater_MassSpecific <- ggplot(data = TotalWaterPerDive, 
+                                  aes (y = MR, x = TL)) +
+  geom_point(aes(shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8) +
+  geom_smooth(method = "glm", color = "red") +
   scale_color_gradientn(colours = c("skyblue2",
                                     "deepskyblue2",
                                     "dodgerblue2", "royalblue",
                                     "mediumblue", "navy", "midnightblue")) +
   labs(x = "log Total Length (m)",
        y = "log MR") +
-  geom_abline(slope = 1.10363, intercept =  -0.98516, linetype = "solid", color="red") +
+  #geom_abline(slope = 1.10363, intercept =  -0.98516, linetype = "solid", color="red") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
-  labs(x = "log TL (m)") +
-  labs(y = "log Total Water Per Dive / Mass") +
+  labs(x = "TL (m)") +
+  labs(y = "Mass-Specific Water Per Dive") +
   guides(color=guide_legend("Lunge Depth (m)")) +
   guides(size=guide_legend("Lunge Depth (m)")) +
   guides(shape=guide_legend("Species")) +
