@@ -115,6 +115,7 @@ FilterPlot_dot <- ggplot(data = FilterTime_Raw, aes(y = log10(purge1), x = log10
                        geom_point(aes(color = abbr_binom(SciName),
                                   shape = abbr_binom(SciName)))+
   geom_smooth(method = glm) + 
+  geom_ribbon(aes(ymin=log10(purge1), ymax=log10(purge1), fill = "grey70"))+
   theme_classic() +
         labs(x = "log TL (m)") +
         labs(y = "log Filter Time (s)") +
