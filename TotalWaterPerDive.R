@@ -36,6 +36,80 @@ TotalWaterPerDive_summary <- TotalWaterPerDive %>% ## add species
             MW_mean = mean(MW))
  
 
+#ID Summary 
+
+TotalWaterPerDive_ID_Summary <- TotalWaterPerDive %>% 
+  group_by(ID) %>% 
+  summarise(MW_mean = mean(MW),
+            MR_mean = mean(MR),
+            TL= mean(TL)) %>% 
+  mutate(SpeciesCode = substr(ID, 1, 2))
+
+
+#Species Summary
+TotalWaterPerDive_Species_Summary <- TotalWaterPerDive %>% 
+  group_by(SpeciesCode) %>% 
+  summarise(MW_max = max(MW),
+            MR_max = max(MR),
+            TL = mean(TL))
+
+
+TotalWater_IDMeans <- ggplot(data = TotalWaterPerDive_ID_Summary, 
+                       aes(x=TL, y= MR_mean)) +
+  geom_point(aes(shape = SpeciesCode, 
+                 color = SpeciesCode),
+             size=5) +
+  geom_smooth(method = lm) +
+  labs(x = "Total Length (m)",
+       y = "Max Mass-Specific") +
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold")) + 
+  guides(shape=guide_legend("Species")) +
+  guides(color=guide_legend("Species"))+
+  theme(legend.text = element_text(size=10, 
+                                   face="italic")) 
+
+TotalWater_IDMeans
+
+TotalWater_IDMeans_glm <- lmer(log10(MR_mean) ~ log10(TL) + (1|SpeciesCode), 
+                         data = TotalWaterPerDive_ID_Summary)
+summary(LungeMeans_glm) #slope is -0.07794
+
+
+IDLungeMeanslm <- lm(log10(MR_mean) ~ log10(TL), data = TotalWaterPerDive_ID_Summary)
+summary(IDLungeMeanslm) #slope is 1.1168
+
+
+#Species Means
+
+TotalWater_SpeciesMeans <- ggplot(data = TotalWaterPerDive_Species_Summary, 
+                             aes(x=TL, y= MR_max)) +
+  geom_point(aes(shape = SpeciesCode, 
+                 color = SpeciesCode),
+             size=5) +
+  geom_smooth(method = lm) +
+  labs(x = "Total Length (m)",
+       y = "Max Mass-Specific") +
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold")) + 
+  guides(shape=guide_legend("Species")) +
+  guides(color=guide_legend("Species"))+
+  theme(legend.text = element_text(size=10, 
+                                   face="italic")) 
+
+TotalWater_SpeciesMeans
+
+# TotalWater_SpeciesMeans_glm <- lmer(log10(MR_max) ~ log10(TL) + (1|SpeciesCode), 
+#                                data = TotalWaterPerDive_Species_Summary)
+# summary(TotalWater_SpeciesMeans_glm) #can't work with so few
+
+
+SpeciesLungeMeanslm <- lm(log10(MR_max) ~ log10(TL), data = TotalWaterPerDive_Species_Summary)
+summary(SpeciesLungeMeanslm) #slope is 0.06841
+
+
 
 # Plotting ----
 

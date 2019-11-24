@@ -6,7 +6,6 @@ library(ggpubr)
 library(readxl)
 library(forcats)
 library(tidyverse)
-library(ggstance)
 library(mgcv)
 library(lme4)
 library(ggpubr)
@@ -61,18 +60,32 @@ LungesPerDive_raw <- LungesPerDive_raw_csv %>%
 
 # Manipulations ----         
 
-LungesPerDive_summary <- LungesPerDive_raw %>% 
+LungesPerDive_summary_ID <- LungesPerDive_raw %>% 
   group_by(ID) %>% 
-  filter(deep_dive == "Y") %>% 
+  filter(response == "Y") %>% 
   summarise(lunge_count_mean = mean(Lunge_Count),
             lunge_count_median = median(Lunge_Count),
             lunge_count_max = max(Lunge_Count),
-            foragingdivecount = n_distinct(Dive_Num)) %>% 
-  mutate(SpeciesCode = substr(ID, 1, 2))
+            foragingdivecount = n_distinct(Dive_Num),
+            TL = mean(TL)) %>% 
+  mutate(SpeciesCode = substr(ID, 1, 2)) %>% 
+  filter(lunge_count_max > 1)
+
+
+LungesPerDive_summary_Species <- LungesPerDive_raw %>% 
+  group_by(SpeciesCode) %>% 
+  filter(response == "Y") %>% 
+  summarise(lunge_count_mean = mean(Lunge_Count),
+            lunge_count_median = median(Lunge_Count),
+            lunge_count_max = max(Lunge_Count),
+            foragingdivecount = n_distinct(Dive_Num),
+            TL = mean(TL))
+
   
 
+# Weighted --
 
-species_summary <- LungesPerDive_raw %>% 
+species_summary_weighted <- LungesPerDive_raw %>% 
   filter(response == "Y") %>% 
   group_by(depthcat, SpeciesCode) %>% 
   summarise(wgt_mean = weighted.mean(Lunge_Count, foragingdivecount),
@@ -80,8 +93,62 @@ species_summary <- LungesPerDive_raw %>%
 
 
 
+# Plotting Means by ID ----
+
+IDLungeMeans <- ggplot(data = LungesPerDive_summary_ID, 
+                     aes(x=TL, y= lunge_count_max)) +
+  geom_point(aes(shape = SpeciesCode, 
+                 color = SpeciesCode)) +
+  geom_smooth(method = lm) +
+  scale_size_continuous(range = c(0.5, 4)) +
+  labs(x = "Total Length (m)",
+       y = "Max Lunges Per Dive") +
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold")) + 
+  guides(shape=guide_legend("Species")) +
+  guides(color=guide_legend("Species"))+
+  guides(shape=guide_legend("Species")) +
+  theme(legend.text = element_text(size=10, 
+                                   face="italic")) 
+
+IDLungeMeans
 
 
+IDLungeMeans_glm <- lmer(log10(lunge_count_max) ~ log10(TL) + (1|SpeciesCode), 
+           data = LungesPerDive_summary_ID)
+summary(LungeMeans_glm) #slope is -0.07794
+
+IDLungeMeanslm <- lm(log10(lunge_count_max) ~ log10(TL), data = LungesPerDive_summary_ID)
+summary(LungeMeanslm) #slope is -0.1508
+
+
+
+
+SpeciesLungeMeans <- ggplot(data = LungesPerDive_summary_Species, 
+                       aes(x=TL, y= lunge_count_max)) +
+  geom_point(aes(shape = SpeciesCode, 
+                 color = SpeciesCode),
+                size=5) +
+  geom_smooth(method = lm) +
+  labs(x = "Total Length (m)",
+       y = "Max Lunges Per Dive") +
+  theme_classic() +
+  theme(axis.text=element_text(size=10),
+        axis.title=element_text(size=12,face="bold")) + 
+  guides(shape=guide_legend("Species")) +
+  guides(color=guide_legend("Species"))+
+  theme(legend.text = element_text(size=10, 
+                                   face="italic")) 
+
+SpeciesLungeMeans
+
+# SpeciesLungeMeans_glm <- lmer(log10(lunge_count_max) ~ log10(TL) + (1|SpeciesCode), 
+#                        data = LungesPerDive_summary_Species)
+# summary(SpeciesLungeMeans_glm) #glm doesnt work! 
+
+SpeciesLungeMeanslm <- lm(log10(lunge_count_max) ~ log10(TL), data = LungesPerDive_summary_Species)
+summary(SpeciesLungeMeanslm) #slope is -0.6146
 
 
 #Plotting all data - Lunge Count vs TL ----
