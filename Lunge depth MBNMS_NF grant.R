@@ -27,7 +27,8 @@ feeding_depth_by_sp <- ggplot(lunge_depths_in_MBNMS, aes(lunge_depth, color = bi
   coord_flip() +
   scale_x_reverse() +
   scale_color_manual(values = pal) +
-  labs(x = "Feeding depth (m)") +
+  labs(x = "Feeding Depth (m)") +
+  labs(y = "Lunge Counts") +
   theme_classic(base_size = 18) +
   theme(legend.position = "none",
         strip.text = element_text(face = "italic"))

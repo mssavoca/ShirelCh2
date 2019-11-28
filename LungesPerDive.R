@@ -115,7 +115,7 @@ IDLungeMeans <- ggplot(data = LungesPerDive_summary_ID,
 IDLungeMeans
 
 
-IDLungeMeans_glm <- lmer(log10(lunge_count_max) ~ log10(TL) + (1|SpeciesCode), 
+IDLungeMeans_glmm <- lmer(log10(lunge_count_max) ~ log10(TL) + (1|SpeciesCode), 
            data = LungesPerDive_summary_ID)
 summary(LungeMeans_glm) #slope is -0.07794
 
