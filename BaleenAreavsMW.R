@@ -88,6 +88,24 @@ Fig1 <- ggplot() +
         axis.title=element_text(size=12,face="bold"))+
   guides(color=guide_legend("Species")) +
   guides(shape=guide_legend("Species")) +
+  scale_color_discrete(name="Species",
+                       labels=c("B. bonaerensis, 
+          MW = 330; BA = 8",
+                                "B. musculus, 
+          MW = 489, BA = 5",
+                                "B. physalus, 
+          MW = 491, BA = 30",
+                                "M. novaeangliae, 
+          MW = 51, BA = 8"))+
+  scale_shape_discrete(name="Species",
+                       labels=c("B. bonaerensis, 
+          MW = 330; BA = 8",
+                                "B. musculus, 
+          MW = 489, BA = 5",
+                                "B. physalus, 
+          MW = 491, BA = 30",
+                                "M. novaeangliae, 
+          MW = 51, BA = 8"))+
   theme(legend.text = element_text(size=10, 
                                    face="italic"))
 

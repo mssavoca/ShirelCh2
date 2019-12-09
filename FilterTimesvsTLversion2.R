@@ -161,6 +161,7 @@ summary(MCMCglmm_FT_TL)
 
 
 model_param_values <- as.data.frame(MCMCglmm_FT_TL$Sol) #plot quantile 97.5 and 2.5 
+quantile(model_param_values$`log10(TL.y)`, probs = c(0.025, 0.975))
 
 
 # plot parameter distributions
@@ -168,9 +169,9 @@ slope_distributions <- ggplot(model_param_values) +
   geom_density(aes(`log10(TL.y)`), color = "dark blue") +
   labs(x = "slope parameter distribution") +
   geom_vline(xintercept = 1.88,  linetype = "dashed", color = "dark blue") +   # predicted slope
-  #geom_vline(xintercept = 1.8,  linetype = "dotted", color = "red") +           # slope for the scaling of baleen area
+  geom_vline(xintercept = 1,  linetype = "dotted", color = "red") +           # slope for the scaling of baleen area
   #geom_vline(xintercept = 3.7,  linetype = "dotted", color = "red") +           # slope for the scaling of MW
-  xlim(1,2.7) +
+  xlim(0.8,2.3) +
   theme_classic()
 slope_distributions 
 

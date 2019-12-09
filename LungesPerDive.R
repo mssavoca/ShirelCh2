@@ -63,10 +63,12 @@ LungesPerDive_raw <- LungesPerDive_raw_csv %>%
 LungesPerDive_summary_ID <- LungesPerDive_raw %>% 
   group_by(ID) %>% 
   filter(response == "Y") %>% 
-  summarise(lunge_count_mean = mean(Lunge_Count),
-            lunge_count_median = median(Lunge_Count),
+  summarise(
+    #lunge_count_mean = mean(Lunge_Count),
+            #lunge_count_median = median(Lunge_Count),
             lunge_count_max = max(Lunge_Count),
             foragingdivecount = n_distinct(Dive_Num),
+            Meandepth_ofmaxlunge = ifelse()
             TL = mean(TL)) %>% 
   mutate(SpeciesCode = substr(ID, 1, 2)) %>% 
   filter(lunge_count_max > 1)
@@ -114,13 +116,13 @@ IDLungeMeans <- ggplot(data = LungesPerDive_summary_ID,
 
 IDLungeMeans
 
-
-IDLungeMeans_glmm <- lmer(log10(lunge_count_max) ~ log10(TL) + (1|SpeciesCode), 
-           data = LungesPerDive_summary_ID)
-summary(LungeMeans_glm) #slope is -0.07794
+# 
+# IDLungeMeans_glmm <- lmer(log10(lunge_count_max) ~ log10(TL) + (1|SpeciesCode), 
+#            data = LungesPerDive_summary_ID)
+# summary(IDLungeMeans_glmm) #slope is -0.3442
 
 IDLungeMeanslm <- lm(log10(lunge_count_max) ~ log10(TL), data = LungesPerDive_summary_ID)
-summary(LungeMeanslm) #slope is -0.1508
+summary(IDLungeMeanslm) #slope is -0.3442
 
 
 
@@ -321,7 +323,7 @@ DiveLength_TL <-  ggplot(data = GLMM, aes(x=TL, y= Dive_Length)) +
   scale_size_continuous(range = c(0.5, 4)) +
   #ylim(0, 1.5) +
   labs(x = "Total Length (m)",
-       y = "Dive Length") +
+       y = "log Dive Duration (s)") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) +

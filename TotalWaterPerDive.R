@@ -115,15 +115,17 @@ summary(SpeciesLungeMeanslm) #slope is 0.06841
 
 #total water per dive (classed by depth) by total length raw data style, not mass specific 
 
-TotalWaterByTL <- ggplot() +
-  geom_point(data = TotalWaterPerDive, aes (y = log10(Total.Water.Per.Dive..kg.), x = log10(TL), shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8)+  
+TotalWaterByTL <- ggplot(data = TotalWaterPerDive , aes (x = log10(TL), y = log10(Total.Water.Per.Dive..kg.))) +
+  geom_point(aes(shape = abbr_binom(SciName),
+                 color = Mean_Depth,
+                 size = Mean_Depth)) +  
+  geom_smooth(method= lm) +
   scale_color_gradientn(colours = c("skyblue2",
                                     "deepskyblue2",
                                     "dodgerblue2", "royalblue",
                                     "mediumblue", "navy", "midnightblue")) +
   labs(x = "log Total Length (m)",
        y = "log Total Water Per Dive (kg)") +
-  geom_abline(slope = 3.3447, intercept = 0.9993, linetype = "solid", color="red") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
@@ -134,6 +136,11 @@ TotalWaterByTL <- ggplot() +
                                    face="italic"))
 
 TotalWaterByTL
+
+TotalWaterByTL_lm <- lm(log10(Total.Water.Per.Dive..kg.) ~ log10(TL), data = TotalWaterPerDive)
+summary(TotalWaterByTL_lm )
+
+
 
 # Stats for TotalWaterByTL 
 
@@ -158,9 +165,9 @@ summary(MCMCglmm_MW_TL)
 
 ### total water per dive divided by mass, by TL, raw data style
 TotalWater_MassSpecific <- ggplot(data = TotalWaterPerDive, 
-                                  aes (y = MR, x = TL)) +
+                                  aes (y = log10(MR), x = log10(TL))) +
   geom_point(aes(shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8) +
-  geom_smooth(method = "glm", color = "red") +
+  geom_smooth(method = lm) +
   scale_color_gradientn(colours = c("skyblue2",
                                     "deepskyblue2",
                                     "dodgerblue2", "royalblue",
@@ -171,8 +178,8 @@ TotalWater_MassSpecific <- ggplot(data = TotalWaterPerDive,
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
-  labs(x = "TL (m)") +
-  labs(y = "Mass-Specific Water Per Dive") +
+  labs(x = "log TL (m)") +
+  labs(y = "log Mass-Specific Water Per Dive") +
   guides(color=guide_legend("Lunge Depth (m)")) +
   guides(size=guide_legend("Lunge Depth (m)")) +
   guides(shape=guide_legend("Species")) +
@@ -180,6 +187,11 @@ TotalWater_MassSpecific <- ggplot(data = TotalWaterPerDive,
                                    face="italic"))
 
 TotalWater_MassSpecific
+
+TotalWater_MassSpecific_lm <- lm(log10(MR) ~ log10(TL), data = TotalWaterPerDive)
+summary(TotalWater_MassSpecific_lm )
+
+
 
 # Stats for TotalWaterByTL 
 
