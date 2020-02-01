@@ -60,10 +60,10 @@ baleen
 Fig1 <- ggplot() +
   geom_point(data = engulfmentmw,
              aes(x = log10(TL), y = log10(MW),
-                  color= SpeciesFull, shape = SpeciesFull), size = 2.5, alpha = .6) +
+                  color= SpeciesFull, shape = SpeciesFull), size = 2.5) +
   geom_point(data = baleenarea,
              aes(x = log10(TL), y = log10(BA),
-                 color= SpeciesFull, shape= SpeciesFull), size = 2.5, alpha = .6) +
+                 color= SpeciesFull, shape= SpeciesFull), size = 2.5) +
   # #geom_smooth(data = engulfmentmw, 
   #            aes(x = log10(TL), y = log10(MW), color = SpeciesFull), 
   #            method = "lm",se = FALSE)+ 
@@ -76,40 +76,46 @@ Fig1 <- ggplot() +
   # geom_smooth(data = baleenarea, 
   #             aes(x = log10(TL), y = log10(BA)), 
   #             method = "lm", se = FALSE) +
-  geom_abline(slope = 1.8248, intercept = -1.8553, linetype = "dashed", color="orange", lwd = 1) + 
-  geom_abline(slope = 3.707748, intercept = 0.108239, linetype = "dashed", color="blue", lwd = 1) + 
+  geom_abline(slope = 1.8248, intercept = -1.8553, linetype = "twodash", color="black", lwd = 1) + 
+  geom_abline(slope = 3.707748, intercept = 0.108239, linetype = "dashed", color="black", lwd = 1) + 
   #geom_abline(slope = 1.7902, intercept = -0.6915, linetype = "dashed", color="purple", lwd = 1) + 
   scale_y_continuous(sec.axis = sec_axis(~., name = "Baleen Area [m]")) +
   xlim(0.5, 1.8) +
-  labs(x = "log TL (m)") +
-  labs(y = "log MW (L)") +
+  labs(x = "log Total Length (m)") +
+  labs(y = "log Engulfment Volume (kg)") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold"))+
   guides(color=guide_legend("Species")) +
   guides(shape=guide_legend("Species")) +
   scale_color_discrete(name="Species",
-                       labels=c("B. bonaerensis, 
-          MW = 330; BA = 8",
-                                "B. musculus, 
-          MW = 489, BA = 5",
-                                "B. physalus, 
-          MW = 491, BA = 30",
-                                "M. novaeangliae, 
-          MW = 51, BA = 8"))+
+                       labels=c("B. bonaerensis", "B. musculus", "B. physalus", "M. novaeangliae"))+
   scale_shape_discrete(name="Species",
-                       labels=c("B. bonaerensis, 
-          MW = 330; BA = 8",
-                                "B. musculus, 
-          MW = 489, BA = 5",
-                                "B. physalus, 
-          MW = 491, BA = 30",
-                                "M. novaeangliae, 
-          MW = 51, BA = 8"))+
+                       labels=c("B. bonaerensis", "B. musculus", "B. physalus", "M. novaeangliae"))+
   theme(legend.text = element_text(size=10, 
                                    face="italic"))
 
 Fig1
+
+# ## for presentations
+# #scale_color_discrete(name="Species",
+#                      labels=c("B. bonaerensis, 
+#                               MW = 330; BA = 8",
+#                               "B. musculus, 
+#                               MW = 489, BA = 5",
+#                               "B. physalus, 
+#                               MW = 491, BA = 30",
+#                               "M. novaeangliae, 
+#                               MW = 51, BA = 8"))+
+#   scale_shape_discrete(name="Species",
+#                        labels=c("B. bonaerensis, 
+#                                 MW = 330; BA = 8",
+#                                 "B. musculus, 
+#                                 MW = 489, BA = 5",
+#                                 "B. physalus, 
+#                                 MW = 491, BA = 30",
+#                                 "M. novaeangliae, 
+#                                 MW = 51, BA = 8"))+
 
 
 # GLMM and MCMC ----

@@ -35,7 +35,7 @@ TotalWaterPerDive_summary <- TotalWaterPerDive %>% ## add species
   summarise(MR_mean = mean(MR),
             MW_mean = mean(MW))
  
-
+### Summaries ####
 #ID Summary 
 
 TotalWaterPerDive_ID_Summary <- TotalWaterPerDive %>% 
@@ -116,21 +116,20 @@ summary(SpeciesLungeMeanslm) #slope is 0.06841
 #total water per dive (classed by depth) by total length raw data style, not mass specific 
 
 TotalWaterByTL <- ggplot(data = TotalWaterPerDive , aes (x = log10(TL), y = log10(Total.Water.Per.Dive..kg.))) +
-  geom_point(aes(shape = abbr_binom(SciName),
-                 color = Mean_Depth,
-                 size = Mean_Depth)) +  
+  geom_point(aes(shape = SciName,
+                 color = SciName,
+                 size = 4)) +  
   geom_smooth(method= lm) +
-  scale_color_gradientn(colours = c("skyblue2",
-                                    "deepskyblue2",
-                                    "dodgerblue2", "royalblue",
-                                    "mediumblue", "navy", "midnightblue")) +
+  # scale_color_gradientn(colours = c("skyblue2",
+  #                                   "deepskyblue2",
+  #                                   "dodgerblue2", "royalblue",
+  #                                   "mediumblue", "navy", "midnightblue")) +
   labs(x = "log Total Length (m)",
        y = "log Total Water Per Dive (kg)") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
-  guides(color=guide_legend("Lunge Depth (m)")) +
-  guides(size=guide_legend("Lunge Depth (m)")) +
+  guides(color=guide_legend("Species")) +
   guides(shape=guide_legend("Species")) +
   theme(legend.text = element_text(size=10, 
                                    face="italic"))
@@ -164,21 +163,22 @@ summary(MCMCglmm_MW_TL)
 
 
 ### total water per dive divided by mass, by TL, raw data style
+
 TotalWater_MassSpecific <- ggplot(data = TotalWaterPerDive, 
                                   aes (y = log10(MR), x = log10(TL))) +
-  geom_point(aes(shape=SciName, color = Mean_Depth, size = Mean_Depth), alpha = 0.8) +
+  geom_point(aes(shape=SciName, color = SciName, size = 4)) +
   geom_smooth(method = lm) +
-  scale_color_gradientn(colours = c("skyblue2",
-                                    "deepskyblue2",
-                                    "dodgerblue2", "royalblue",
-                                    "mediumblue", "navy", "midnightblue")) +
+  # scale_color_gradientn(colours = c("skyblue2",
+  #                                   "deepskyblue2",
+  #                                   "dodgerblue2", "royalblue",
+  #                                   "mediumblue", "navy", "midnightblue")) +
   labs(x = "log Total Length (m)",
        y = "log MR") +
   #geom_abline(slope = 1.10363, intercept =  -0.98516, linetype = "solid", color="red") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) + 
-  labs(x = "log TL (m)") +
+  labs(x = "log Total Length (m)") +
   labs(y = "log Mass-Specific Water Per Dive") +
   guides(color=guide_legend("Lunge Depth (m)")) +
   guides(size=guide_legend("Lunge Depth (m)")) +

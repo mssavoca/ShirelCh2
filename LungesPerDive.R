@@ -11,6 +11,9 @@ library(lme4)
 library(ggpubr)
 library(ggplot2)
 library(effects)
+library(sjPlot)
+
+install.packages("sjPlot")
 
 
 
@@ -75,10 +78,12 @@ LungesPerDive_summary_ID <- LungesPerDive_raw %>%
 
 
 LungesPerDive_summary_Species <- LungesPerDive_raw %>% 
-  group_by(SpeciesCode) %>% 
+  group_by(SpeciesCode, depthcat) %>% 
   filter(response == "Y") %>% 
   summarise(lunge_count_mean = mean(Lunge_Count),
+            SE_lunge_count_mean = SE(Lunge_Count),
             lunge_count_median = median(Lunge_Count),
+            SE_lunge_count_median = SE(Lunge_Count),
             lunge_count_max = max(Lunge_Count),
             foragingdivecount = n_distinct(Dive_Num),
             TL = mean(TL))
@@ -197,7 +202,7 @@ lungesperdive_bar
 
 
 # Plot by Depth Bins ----
-#- Jeremy had an idea to have a three panel plot. does it look better as points or as violin?  
+#- Jeremy had an idea to have a three panel plot. Looks better as violin
 
 #Points ----
 Fiftyandbelow <- LungesPerDive_raw %>% 
@@ -293,6 +298,7 @@ ggarrange(PlotFifty, PlotHundred, PlotHundredFifty +
 
 
 
+
 #Statistics for Lunge Count - GLMM ----
 GLMM <- read_csv("GLMM data.csv") %>% 
   filter(TL > 6, Lunge_Count >0, Mean_Depth > 50, Dive_Length < 3000) %>% 
@@ -311,24 +317,24 @@ GLMM <- read_csv("GLMM data.csv") %>%
 # Plot Dive Length ----
 
 
-DiveLength_TL <-  ggplot(data = GLMM, aes(x=TL, y= Dive_Length)) +
-                    geom_point(aes(color = Mean_Depth, 
-                                   shape = abbr_binom(SciName))) +
+DiveLength_TL <-  ggplot(data = GLMM, aes(x=log10(TL), y= log10(Dive_Length))) +
+  geom_point(aes(shape = SciName,
+                 color = SciName,
+                 size = 4)) + 
   geom_smooth(method= lm) +
-    scale_color_gradientn(colours = c("skyblue2",
-                                    "deepskyblue2",
-                                    "dodgerblue2", "royalblue",
-                                    "mediumblue", "navy", "midnightblue"), #blues to mimic ocean depth
-                        name = "Mean Depth (m)") +
+    # scale_color_gradientn(colours = c("skyblue2",
+    #                                 "deepskyblue2",
+    #                                 "dodgerblue2", "royalblue",
+    #                                 "mediumblue", "navy", "midnightblue"), #blues to mimic ocean depth
+    #                     name = "Mean Depth (m)") +
   scale_size_continuous(range = c(0.5, 4)) +
   #ylim(0, 1.5) +
-  labs(x = "Total Length (m)",
+  labs(x = "log Total Length (m)",
        y = "log Dive Duration (s)") +
   theme_classic() +
   theme(axis.text=element_text(size=10),
         axis.title=element_text(size=12,face="bold")) +
-  guides(color=guide_legend("Lunge Depth (m)")) +
-  guides(size=guide_legend("Lunge Depth (m)")) +
+  guides(color=guide_legend("Species")) +
   guides(shape=guide_legend("Species")) +
   theme(legend.text = element_text(size=10,
                                    face="italic"))
@@ -338,6 +344,8 @@ DiveLength_TL
 
 DiveLength_TL_lm <- lm(log10(Dive_Length) ~ log10(TL), data = GLMM)
 summary(DiveLength_TL_lm)
+
+
 
 
 DiveLength_TL<- lmer(log10(Dive_Length) ~ log10(TL) + (1|ID), 
@@ -358,6 +366,25 @@ LungeCountGLMM <- glmer(Lunge_Count ~ Mean_Depth_z + #winner winner chicken dinn
                   Dive_Length_z + 
                   (1| ID), 
                 data = GLMM, family = "poisson")
+
+
+plot_model(LungeCountGLMM)+
+  xlab("Predictors")+
+  geom_point(size =6)+
+  ylim(0.6, 1.3)+
+  ggtitle("")+
+  theme_bw()+
+  theme(legend.text = element_text(size=10, 
+                                   face="italic")) +
+  geom_hline(yintercept = 1)
+
+plot_model(LungeCountGLMM, type = "re") #shows which indiv had high or low number of dives 
+  
+  
+#effect of depth on lunge cout is positive, meaning that with increasing depth, there are more lunges
+#effect of tl on lunge count is negative, meaning that larger animals lunge less
+#effect of dive length on lunge count is positive, menaing that with increasing dive length there are more lunges
+
 
 GLMMSummary_LungeCount <- summary(LungeCountGLMM)
 capture.output(GLMMSummary_LungeCount, file = "GLMMSummary_LungeCount.txt")
