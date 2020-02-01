@@ -57,25 +57,14 @@ baleen <- ggplot(baleenarea, aes(x = log10(TL), y = log10(BA))) +
 baleen
 
 # Combine two data frames -----
+
 Fig1 <- ggplot() +
   geom_point(data = engulfmentmw,
-             aes(x = log10(TL), y = log10(MW),
-                  color= SpeciesFull, shape = SpeciesFull), size = 2.5) +
+             aes(x = log10(TL), y = log10(MW), color = SpeciesFull, size = 0.75)) +
+  scale_color_manual("", values = c("#E69E00", "#56B4E9", "#009E73", "#CC79A7")) +
   geom_point(data = baleenarea,
-             aes(x = log10(TL), y = log10(BA),
-                 color= SpeciesFull, shape= SpeciesFull), size = 2.5) +
-  # #geom_smooth(data = engulfmentmw, 
-  #            aes(x = log10(TL), y = log10(MW), color = SpeciesFull), 
-  #            method = "lm",se = FALSE)+ 
-  # geom_smooth(data = engulfmentmw, 
-  #             aes(x = log10(TL), y = log10(MW)), 
-  #             method = "lm",se = FALSE, color="red") +
-  # geom_smooth(data = baleenarea, 
-  #            aes(x = log10(TL), y = log10(BA), color= SpeciesFull),
-  #             method = "lm", se = FALSE) + 
-  # geom_smooth(data = baleenarea, 
-  #             aes(x = log10(TL), y = log10(BA)), 
-  #             method = "lm", se = FALSE) +
+             aes(x = log10(TL), y = log10(BA), color = SpeciesFull, size = 0.75)) +
+               scale_color_manual("", values = c("#E69E00", "#56B4E9", "#009E73", "#CC79A7")) +
   geom_abline(slope = 1.8248, intercept = -1.8553, linetype = "twodash", color="black", lwd = 1) + 
   geom_abline(slope = 3.707748, intercept = 0.108239, linetype = "dashed", color="black", lwd = 1) + 
   #geom_abline(slope = 1.7902, intercept = -0.6915, linetype = "dashed", color="purple", lwd = 1) + 
@@ -88,10 +77,10 @@ Fig1 <- ggplot() +
         axis.title=element_text(size=12,face="bold"))+
   guides(color=guide_legend("Species")) +
   guides(shape=guide_legend("Species")) +
-  scale_color_discrete(name="Species",
-                       labels=c("B. bonaerensis", "B. musculus", "B. physalus", "M. novaeangliae"))+
-  scale_shape_discrete(name="Species",
-                       labels=c("B. bonaerensis", "B. musculus", "B. physalus", "M. novaeangliae"))+
+  #scale_color_discrete(name="Species",
+                       #labels=c("B. bonaerensis", "B. musculus", "B. physalus", "M. novaeangliae"))+
+  #scale_shape_discrete(name="Species",
+                       #labels=c("B. bonaerensis", "B. musculus", "B. physalus", "M. novaeangliae"))+
   theme(legend.text = element_text(size=10, 
                                    face="italic"))
 

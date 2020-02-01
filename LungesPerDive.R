@@ -315,18 +315,11 @@ GLMM <- read_csv("GLMM data.csv") %>%
 
 
 # Plot Dive Length ----
-
-
 DiveLength_TL <-  ggplot(data = GLMM, aes(x=log10(TL), y= log10(Dive_Length))) +
   geom_point(aes(shape = SciName,
                  color = SciName,
                  size = 4)) + 
   geom_smooth(method= lm) +
-    # scale_color_gradientn(colours = c("skyblue2",
-    #                                 "deepskyblue2",
-    #                                 "dodgerblue2", "royalblue",
-    #                                 "mediumblue", "navy", "midnightblue"), #blues to mimic ocean depth
-    #                     name = "Mean Depth (m)") +
   scale_size_continuous(range = c(0.5, 4)) +
   #ylim(0, 1.5) +
   labs(x = "log Total Length (m)",
@@ -341,6 +334,28 @@ DiveLength_TL <-  ggplot(data = GLMM, aes(x=log10(TL), y= log10(Dive_Length))) +
 
 
 DiveLength_TL
+
+
+DiveLength_line <- GLMM %>% 
+  group_by(ID, TL, SpeciesCode) %>% 
+  summarize(mean_diveduration = mean(Dive_Length),
+            sd_diveduration = sd(Dive_Length),
+            low_diveduration = quantile(Dive_Length, 0.25),
+            high_diveduration = quantile(Dive_Length, 0.75)) %>% 
+  ungroup() %>%
+  ggplot(aes(log10(TL), log10(mean_diveduration))) +
+  geom_linerange(aes(ymin = log10(low_diveduration), ymax = log10(high_diveduration))) +
+  geom_point(size = 2) +
+  scale_color_manual("", values = c("E69E00", "56B4E9", "009E73", "CC79A7")) +
+  labs(x = "log Total Length (m)") +
+  labs(y = "log Filter Time (s)") +
+  theme_classic(base_size = 14) +
+  theme(axis.title = element_text(face = "bold"),
+        legend.position = "bottom",
+        legend.text = element_text(face = "italic"))
+DiveLength_line
+
+
 
 DiveLength_TL_lm <- lm(log10(Dive_Length) ~ log10(TL), data = GLMM)
 summary(DiveLength_TL_lm)
